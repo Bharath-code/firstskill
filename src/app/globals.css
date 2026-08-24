@@ -1,26 +1,561 @@
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap");
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ink: #0b1215;
+  --ink-2: #142026;
+  --paper: #e8f0f2;
+  --paper-dim: #c5d5d9;
+  --teal: #0d8f7a;
+  --teal-bright: #14c4a5;
+  --signal: #d4ff4a;
+  --warn: #e8a317;
+  --fail: #e24a3b;
+  --ok: #1faa6e;
+  --muted: #6b7f86;
+  --line: rgba(13, 143, 122, 0.28);
+  --font-display: "Bricolage Grotesque", Georgia, serif;
+  --font-body: "Figtree", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(20, 196, 165, 0.18), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, rgba(212, 255, 74, 0.12), transparent 50%),
+    linear-gradient(180deg, #dce9ec 0%, var(--paper) 35%, #d5e4e8 100%);
+  background-attachment: fixed;
+}
+
+a {
+  color: var(--teal);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  color: var(--ink);
+}
+
+.fs-shell {
+  width: min(1080px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding-bottom: 4rem;
+}
+
+.fs-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 0 1rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 2rem;
+  animation: fs-fade 0.6s ease both;
+}
+
+.fs-logo {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: none;
+  letter-spacing: -0.02em;
+}
+
+.fs-nav nav {
+  display: flex;
+  gap: 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.fs-nav a {
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.fs-nav a:hover {
+  color: var(--teal);
+}
+
+.fs-hero {
+  padding: 2.5rem 0 3rem;
+  animation: fs-rise 0.7s ease both;
+}
+
+.fs-hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2.6rem, 7vw, 4.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  margin: 0.35rem 0 1rem;
+  max-width: 14ch;
+}
+
+.fs-kicker {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin: 0;
+}
+
+.fs-lede {
+  font-size: 1.1rem;
+  line-height: 1.55;
+  max-width: 36rem;
+  color: var(--ink-2);
+  margin: 0 0 1.75rem;
+}
+
+.fs-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 2.5rem;
+}
+
+.fs-btn {
+  appearance: none;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.75rem 1.15rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.fs-btn:hover {
+  transform: translateY(-1px);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.fs-btn--primary {
+  background: var(--ink);
+  color: var(--signal);
+  border-color: var(--ink);
+}
+
+.fs-btn--primary:hover {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #fff;
+}
+
+.fs-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+  transform: none;
+}
+
+.fs-hero-panel {
+  border-top: 1px solid var(--line);
+  padding-top: 1.5rem;
+  animation: fs-fade 0.9s ease 0.15s both;
+}
+
+.fs-hero-panel h2 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  margin: 0 0 1rem;
+}
+
+.fs-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.fs-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 720px) {
+  .fs-field-row {
+    grid-template-columns: 1fr;
+  }
+
+  .fs-nav {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+}
+
+.fs-label {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.fs-input {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.fs-input:focus {
+  outline: 2px solid var(--teal-bright);
+  outline-offset: 1px;
+}
+
+.fs-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.fs-error {
+  color: var(--fail);
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.fs-muted {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.fs-section {
+  margin: 2.5rem 0;
+  animation: fs-fade 0.5s ease both;
+}
+
+.fs-section h2 {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  margin: 0 0 0.75rem;
+}
+
+.fs-score-hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3rem);
+  margin: 0.25rem 0 0.5rem;
+}
+
+.fs-score-meter {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  margin: 1.25rem 0;
+}
+
+.fs-score-num {
+  font-family: var(--font-display);
+  font-size: 4rem;
+  line-height: 1;
+  color: var(--teal);
+}
+
+.fs-score-den {
+  font-family: var(--font-mono);
+  color: var(--muted);
+}
+
+.fs-score-rate {
+  margin-left: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  background: var(--ink);
+  color: var(--signal);
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+}
+
+.fs-badge {
+  display: block;
+  margin-top: 0.5rem;
+}
+
+.fs-run-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.fs-run-list > li {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.fs-run-list > li.ok {
+  border-color: rgba(31, 170, 110, 0.45);
+}
+
+.fs-run-list > li.fail {
+  border-color: rgba(226, 74, 59, 0.4);
+}
+
+.fs-run-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.fs-run-list ol {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.fs-run-list code {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--ink-2);
+}
+
+.fs-fix-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.fs-fix-list p {
+  margin: 0.25rem 0 0;
+  color: var(--ink-2);
+}
+
+.fs-pack-cta {
+  border: 1px solid var(--ink);
+  border-radius: 16px;
+  padding: 1.25rem 1.35rem;
+  background:
+    linear-gradient(135deg, rgba(212, 255, 74, 0.2), transparent 55%),
+    rgba(255, 255, 255, 0.65);
+}
+
+.fs-pack-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin: 1rem 0;
+}
+
+.fs-pack-row .fs-input {
+  flex: 1;
+  min-width: 220px;
+}
+
+.fs-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.fs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.fs-table th,
+.fs-table td {
+  text-align: left;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.fs-table th {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.fs-table tr:last-child td {
+  border-bottom: none;
+}
+
+.fs-score-pill {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--signal);
+}
+
+.fs-before-after {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-top: 1rem;
+  font-family: var(--font-display);
+  font-size: 2rem;
+}
+
+.fs-before-after > div {
+  display: grid;
+}
+
+.fs-before-after .fs-muted {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.fs-include {
+  margin: 0;
+  padding-left: 1.2rem;
+  line-height: 1.7;
+}
+
+.fs-files {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 800px) {
+  .fs-files {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fs-files ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.fs-files button {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.fs-files button.active {
+  border-color: var(--teal);
+  background: rgba(20, 196, 165, 0.12);
+}
+
+.fs-code {
+  margin: 0;
+  padding: 1rem;
+  border-radius: 12px;
+  background: var(--ink);
+  color: #d7e6ea;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  overflow: auto;
+  max-height: 420px;
+  white-space: pre-wrap;
+}
+
+.fs-footer {
+  margin-top: 4rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.fs-kill {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 1.25rem;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.fs-kill dl {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 0.5rem 1rem;
+}
+
+.fs-kill dt {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.fs-kill dd {
+  margin: 0;
+  font-weight: 500;
+}
+
+.fs-status-pass {
+  color: var(--ok);
+}
+
+.fs-status-kill {
+  color: var(--fail);
+}
+
+.fs-status-tracking {
+  color: var(--warn);
+}
+
+@keyframes fs-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fs-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

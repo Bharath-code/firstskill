@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FirstSkill
 
-## Getting Started
+**Official agent skill packs with first-success proof.**
 
-First, run the development server:
+Agents are becoming the buyer of software. FirstSkill does one job: prove an agent can finish a money-path JTBD on your API, then ship a tested `SKILL.md` pack so agents keep choosing you.
+
+We do **not** compete with Netlify for the “AX” brand. We do **not** host MCP. Score is the lead magnet; the skill pack is the product.
+
+## Quick start
 
 ```bash
+cd firstskill
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Product surfaces
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Path | Purpose |
+|------|---------|
+| `/` | Landing + free score form |
+| `/score` | Score request |
+| `/score/[id]` | Public report + pack CTA |
+| `/leaderboard?niche=forms` | Public form-API leaderboard (8 seeded) |
+| `/pack/[id]` | Skill pack preview + simulated checkout |
+| `/kill-criteria` | 30-day GO/NO-GO tracker |
+| `/api/badge/[id]` | SVG badge |
+| `/api/metrics` | Kill-criteria JSON |
 
-## Learn More
+## Pricing (as shipped)
 
-To learn more about Next.js, take a look at the following resources:
+- Free first-success score (3 simulated agent runs)
+- **$197** early-bird skill pack (standard **$297**)
+- Checkout is **simulated** until `STRIPE_SECRET_KEY` is wired
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Stack
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Next.js App Router, file-backed JSON store in `data/` (swap for Postgres when you scale).
 
-## Deploy on Vercel
+## Kill criteria
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+After 30 days from launch metrics: need **≥10 scorecard users** and **≥3 paid conversations**. See `/kill-criteria` and `docs/KILL_CRITERIA.md`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Learning hook
+
+Refine fail-step attribution in `src/lib/scorer.ts` → `attributeFailStep()`.

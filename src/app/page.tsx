@@ -1,69 +1,79 @@
-import Image from "next/image";
+import Link from "next/link";
+import { ScoreForm } from "@/components/ScoreForm";
+import { ensureSeedScorecards } from "@/lib/seed";
+import { listPublicScorecards } from "@/lib/store";
 
-export default function Home() {
+export default async function HomePage() {
+  await ensureSeedScorecards();
+  const top = (await listPublicScorecards())
+    .filter((c) => c.niche === "forms")
+    .slice(0, 5);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <>
+      <section className="fs-hero">
+        <p className="fs-kicker">FirstSkill</p>
+        <h1>Agents finish one job — or they pick someone else.</h1>
+        <p className="fs-lede">
+          Free first-success score across Claude, Cursor, and Codex. Then ship an official
+          agent skill pack so they keep choosing your API.
+        </p>
+        <div className="fs-cta-row">
+          <Link className="fs-btn fs-btn--primary" href="#score">
+            Score your product
+          </Link>
+          <Link className="fs-btn" href="/leaderboard?niche=forms">
+            Form APIs leaderboard
+          </Link>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="fs-hero-panel" id="score">
+          <h2>Run a free score</h2>
+          <ScoreForm />
         </div>
-      </main>
-    </div>
+      </section>
+
+      <section className="fs-section">
+        <h2>Top form APIs right now</h2>
+        <p className="fs-muted">
+          Public scores for the beachhead niche. Bottom half gets the outreach email.
+        </p>
+        <div className="fs-table-wrap">
+          <table className="fs-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Product</th>
+                <th>Score</th>
+                <th>Success</th>
+              </tr>
+            </thead>
+            <tbody>
+              {top.map((c, i) => (
+                <tr key={c.id}>
+                  <td>{i + 1}</td>
+                  <td>
+                    <Link href={`/score/${c.slug}`}>{c.productName}</Link>
+                  </td>
+                  <td>
+                    <span className="fs-score-pill">{c.score.toFixed(1)}</span>
+                  </td>
+                  <td>{Math.round(c.successRate * 100)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="fs-section">
+        <h2>What we sell (and what we don’t)</h2>
+        <p>
+          We don’t host MCP for you. We don’t fight Netlify for the “AX” brand. We prove
+          agents can complete <em>one</em> money-path job, then deliver the SKILL.md +
+          references that raise first-success rate.
+        </p>
+      </section>
+    </>
   );
 }
