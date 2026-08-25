@@ -1,5 +1,6 @@
 import type { AgentName, AgentRun, FailStep, RankedFix, ScoreRequest } from "./types";
 import { getJtbd } from "./jtbds";
+import { safeFetch } from "./safe-fetch";
 
 export interface DocSignals {
   reachable: boolean;
@@ -43,14 +44,13 @@ export async function analyzeDocs(
   };
 
   try {
-    const res = await fetch(docsUrl, {
+    const res = await safeFetch(docsUrl, {
       headers: { "User-Agent": "FirstSkillBot/1.0 (+https://firstskill.dev)" },
-      redirect: "follow",
-      signal: AbortSignal.timeout(12000),
+      timeoutMs: 12000,
     });
     signals.reachable = res.ok;
     signals.status = res.status;
-    const text = (await res.text()).slice(0, 120_000);
+    const text = res.text.slice(0, 120_000);
     signals.bodySnippet = text.slice(0, 2000);
     const lower = text.toLowerCase();
 
@@ -78,12 +78,12 @@ export async function analyzeDocs(
       docsUrl.replace(/\/?$/, "/llms.txt"),
     ];
     for (const url of candidates) {
-      const r = await fetch(url, {
+      const r = await safeFetch(url, {
         headers: { "User-Agent": "FirstSkillBot/1.0" },
-        signal: AbortSignal.timeout(6000),
+        timeoutMs: 6000,
       });
       if (r.ok) {
-        const t = await r.text();
+        const t = r.text;
         if (t.length > 40 && !t.trimStart().startsWith("<!")) {
           signals.hasLlmsTxt = true;
           break;
@@ -96,9 +96,9 @@ export async function analyzeDocs(
 
   if (openApiUrl) {
     try {
-      const r = await fetch(openApiUrl, {
-        signal: AbortSignal.timeout(8000),
+      const r = await safeFetch(openApiUrl, {
         headers: { "User-Agent": "FirstSkillBot/1.0" },
+        timeoutMs: 8000,
       });
       if (r.ok) signals.hasOpenApiMention = true;
     } catch {
@@ -304,14 +304,22 @@ export function computeScore(runs: AgentRun[], signals: DocSignals): {
   };
 }
 
+import { runLiveAgentEvaluation } from "./live-runner";
+
 export async function runScorecardAnalysis(req: ScoreRequest) {
   const jtbd =
     req.customJtbd?.trim() ||
     getJtbd(req.jtbdId)?.prompt ||
     "Complete the primary API job documented on the site.";
   const signals = await analyzeDocs(req.docsUrl, req.openApiUrl);
-  const runs = simulateRuns(signals, jtbd);
+  
+  const runs =
+    req.runnerMode === "live"
+      ? await runLiveAgentEvaluation(signals, jtbd, req.docsUrl, req.openApiUrl)
+      : simulateRuns(signals, jtbd);
+
   const { score, successRate } = computeScore(runs, signals);
   const fixes = rankedFixes(signals, runs);
-  return { jtbd, signals, runs, score, successRate, fixes };
+  return { jtbd, signals, runs, score, successRate, fixes, runnerMode: req.runnerMode ?? "heuristic" };
 }
+

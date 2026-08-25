@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import type { ScoreRequest } from "@/lib/types";
 import { runScorecardAnalysis } from "@/lib/scorer";
 import {
-  bumpScorecardUser,
   newId,
   slugify,
   upsertScorecard,
 } from "@/lib/store";
 import { ensureSeedScorecards } from "@/lib/seed";
 import { getJtbd } from "@/lib/jtbds";
+import { assertPublicUrl, BlockedUrlError } from "@/lib/safe-fetch";
 
 export async function POST(req: Request) {
   await ensureSeedScorecards();
@@ -22,9 +22,12 @@ export async function POST(req: Request) {
   }
 
   try {
-    new URL(body.docsUrl);
-  } catch {
-    return NextResponse.json({ error: "docsUrl must be a valid URL" }, { status: 400 });
+    await assertPublicUrl(body.docsUrl);
+    if (body.openApiUrl?.trim()) await assertPublicUrl(body.openApiUrl.trim());
+  } catch (e) {
+    const message =
+      e instanceof BlockedUrlError ? e.message : "docsUrl must be a valid URL";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 
   const analysis = await runScorecardAnalysis(body);
@@ -49,9 +52,9 @@ export async function POST(req: Request) {
     public: body.makePublic !== false,
     seeded: false,
     createdAt: new Date().toISOString(),
+    runnerMode: body.runnerMode ?? "heuristic",
   });
 
-  await bumpScorecardUser();
 
   return NextResponse.json({
     scorecard: card,

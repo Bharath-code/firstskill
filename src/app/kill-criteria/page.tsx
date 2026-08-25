@@ -1,5 +1,6 @@
 import { ensureSeedScorecards } from "@/lib/seed";
 import { getMetrics } from "@/lib/store";
+import { evaluateKillCriteria } from "@/lib/kill-criteria";
 
 export const metadata = {
   title: "Kill criteria — FirstSkill",
@@ -8,19 +9,7 @@ export const metadata = {
 export default async function KillCriteriaPage() {
   await ensureSeedScorecards();
   const metrics = await getMetrics();
-  const now = Date.now();
-  const killAt = new Date(metrics.killAt).getTime();
-  const daysLeft = Math.max(0, Math.ceil((killAt - now) / (24 * 60 * 60 * 1000)));
-  const usersOk = metrics.scorecardUsers >= metrics.killCriteria.minScorecardUsers;
-  const paidOk = metrics.paidConversations >= metrics.killCriteria.minPaidConversations;
-  const windowEnded = now >= killAt;
-  const status = windowEnded
-    ? usersOk && paidOk
-      ? "pass"
-      : "kill"
-    : usersOk && paidOk
-      ? "pass"
-      : "tracking";
+  const { daysLeft, usersOk, paidOk, status } = evaluateKillCriteria(metrics);
 
   return (
     <section className="fs-hero">

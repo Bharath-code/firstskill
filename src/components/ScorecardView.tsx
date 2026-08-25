@@ -55,13 +55,27 @@ export function ScorecardView({ card }: { card: Scorecard }) {
       </header>
 
       <section className="fs-section">
-        <h2>Agent runs</h2>
+        <div className="fs-section-header">
+          <h2>Agent runs</h2>
+          <span className={`fs-mode-pill ${card.runnerMode === "live" ? "fs-mode-pill--live" : ""}`}>
+            {card.runnerMode === "live" ? "Live docs probe" : "Heuristic estimate"}
+          </span>
+        </div>
         <ul className="fs-run-list">
           {card.runs.map((run) => (
             <li key={run.agent} className={run.success ? "ok" : "fail"}>
               <div className="fs-run-head">
-                <strong>{run.agent}</strong>
-                <span>{run.success ? "SUCCESS" : `FAIL @ ${run.failStep}`}</span>
+                <div className="fs-run-title-group">
+                  <strong>{run.agent}</strong>
+                  {run.liveMetrics && (
+                    <span className="fs-live-metric-tag">
+                      {run.liveMetrics.latencyMs}ms • {run.liveMetrics.passedAssertions}/{run.liveMetrics.totalAssertions} assertions passed
+                    </span>
+                  )}
+                </div>
+                <span className={`fs-status-pill ${run.success ? "fs-status-pill--ok" : "fs-status-pill--fail"}`}>
+                  {run.success ? "SUCCESS" : `FAIL @ ${run.failStep}`}
+                </span>
               </div>
               <ol>
                 {run.transcript.map((line, i) => (
@@ -70,7 +84,10 @@ export function ScorecardView({ card }: { card: Scorecard }) {
                   </li>
                 ))}
               </ol>
-              <p className="fs-muted">{run.notes}</p>
+              <div className="fs-run-foot">
+                <p className="fs-muted">{run.notes}</p>
+                <span className="fs-run-duration">Duration: {(run.durationMs / 1000).toFixed(2)}s</span>
+              </div>
             </li>
           ))}
         </ul>

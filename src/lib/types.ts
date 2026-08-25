@@ -11,6 +11,18 @@ export type FailStep =
   | "error-recovery"
   | "none";
 
+export type RunnerMode = "heuristic" | "live";
+
+export interface LiveMetrics {
+  httpStatus?: number;
+  latencyMs?: number;
+  dnsResolved?: boolean;
+  probePath?: string;
+  passedAssertions?: number;
+  totalAssertions?: number;
+  endpointProbed?: string;
+}
+
 export interface AgentRun {
   agent: AgentName;
   success: boolean;
@@ -18,6 +30,8 @@ export interface AgentRun {
   durationMs: number;
   transcript: string[];
   notes: string;
+  runnerMode?: RunnerMode;
+  liveMetrics?: LiveMetrics;
 }
 
 export interface RankedFix {
@@ -44,6 +58,7 @@ export interface Scorecard {
   seeded: boolean;
   createdAt: string;
   skillPackId?: string;
+  runnerMode?: RunnerMode;
 }
 
 export interface SkillPack {
@@ -75,9 +90,11 @@ export interface ScoreRequest {
   customJtbd?: string;
   email?: string;
   makePublic?: boolean;
+  runnerMode?: RunnerMode;
 }
 
 export interface PackRequest {
   scorecardId: string;
   email: string;
 }
+

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { PackRequest } from "@/lib/types";
-import { getScorecard, upsertScorecard, upsertPack, bumpPaidConversation } from "@/lib/store";
+import { getScorecard, upsertScorecard, upsertPack } from "@/lib/store";
 import { generateSkillPack, packAsZipManifest } from "@/lib/skill-generator";
 import { ensureSeedScorecards } from "@/lib/seed";
 
@@ -23,13 +23,13 @@ export async function POST(req: Request) {
   pack.status = "ready";
   await upsertPack(pack);
   await upsertScorecard({ ...card, skillPackId: pack.id, email: body.email });
-  // Intent signal toward paid conversation / checkout
-  await bumpPaidConversation();
 
+  // Paid files are served only from the gated pack page after a verified payment.
   return NextResponse.json({
-    pack,
-    files: packAsZipManifest(pack),
-    checkoutPath: `/pack/${pack.id}?email=${encodeURIComponent(body.email)}`,
+    packId: pack.id,
+    productName: pack.productName,
+    fileNames: Object.keys(packAsZipManifest(pack)),
+    checkoutPath: `/pack/${pack.id}`,
     price: {
       earlyBirdCents: 19700,
       standardCents: 29700,
