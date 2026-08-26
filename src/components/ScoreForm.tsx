@@ -28,6 +28,7 @@ export function ScoreForm() {
   const [openApiUrl, setOpenApiUrl] = useState("");
   const [email, setEmail] = useState("");
   const [makePublic, setMakePublic] = useState(true);
+  const [runnerMode, setRunnerMode] = useState<"heuristic" | "live">("live");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,6 +53,7 @@ export function ScoreForm() {
           jtbdId,
           email: email || undefined,
           makePublic,
+          runnerMode,
         }),
       });
       const data = await res.json();
@@ -148,6 +150,34 @@ export function ScoreForm() {
         </label>
       </div>
 
+      <div className="fs-eval-mode-box">
+        <span className="fs-label-title">Evaluation method</span>
+        <div className="fs-eval-mode-toggle">
+          <button
+            type="button"
+            className={`fs-eval-mode-btn ${runnerMode === "live" ? "active" : ""}`}
+            onClick={() => setRunnerMode("live")}
+          >
+            <span className="fs-eval-dot fs-eval-dot--live" />
+            <div>
+              <strong>Live docs probe</strong>
+              <small>Real HTTP checks on your docs, llms.txt and OpenAPI, with latency</small>
+            </div>
+          </button>
+          <button
+            type="button"
+            className={`fs-eval-mode-btn ${runnerMode === "heuristic" ? "active" : ""}`}
+            onClick={() => setRunnerMode("heuristic")}
+          >
+            <span className="fs-eval-dot" />
+            <div>
+              <strong>Heuristic estimate</strong>
+              <small>Instant scoring from a single documentation crawl</small>
+            </div>
+          </button>
+        </div>
+      </div>
+
       <label className="fs-check">
         <input
           type="checkbox"
@@ -160,7 +190,11 @@ export function ScoreForm() {
       {error && <p className="fs-error">{error}</p>}
 
       <button className="fs-btn fs-btn--primary" type="submit" disabled={loading}>
-        {loading ? "Running agents…" : "Get first-success score"}
+        {loading
+          ? runnerMode === "live"
+            ? "Probing your docs…"
+            : "Running agents…"
+          : "Get first-success score"}
       </button>
     </form>
   );
