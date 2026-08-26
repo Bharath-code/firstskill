@@ -16,7 +16,8 @@ export type RunnerMode = "heuristic" | "live";
 export interface LiveMetrics {
   httpStatus?: number;
   latencyMs?: number;
-  dnsResolved?: boolean;
+  /** Docs URL answered. Not DNS-specific: a timeout or TLS failure also clears it. */
+  reachable?: boolean;
   probePath?: string;
   passedAssertions?: number;
   totalAssertions?: number;

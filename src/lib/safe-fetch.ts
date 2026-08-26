@@ -31,7 +31,7 @@ function isPrivateIp(ip: string): boolean {
   return false;
 }
 
-/** Throws BlockedUrlError unless the URL is https and resolves only to public IPs. */
+/** Throws BlockedUrlError unless the URL is http(s) and resolves only to public IPs. */
 export async function assertPublicUrl(raw: string): Promise<URL> {
   let url: URL;
   try {

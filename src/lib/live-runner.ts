@@ -2,7 +2,7 @@ import type { AgentName, AgentRun, FailStep } from "./types";
 import { attributeFailStep, type DocSignals } from "./scorer";
 import { safeFetch } from "./safe-fetch";
 
-interface ProbeResult {
+export interface ProbeResult {
   url: string;
   ok: boolean;
   status: number;
@@ -10,6 +10,10 @@ interface ProbeResult {
   contentType: string;
   hasPayload: boolean;
 }
+
+/** Assertions that must pass for the surface to count as agent-ready. */
+const LIVE_PASS_THRESHOLD = 4;
+const TOTAL_ASSERTIONS = 5;
 
 async function probeEndpoint(url: string, timeoutMs = 7000): Promise<ProbeResult> {
   const start = performance.now();
@@ -21,13 +25,12 @@ async function probeEndpoint(url: string, timeoutMs = 7000): Promise<ProbeResult
       },
       timeoutMs,
     });
-    const latencyMs = Math.round(performance.now() - start);
 
     return {
       url,
       ok: res.ok,
       status: res.status,
-      latencyMs,
+      latencyMs: Math.round(performance.now() - start),
       contentType: res.contentType,
       hasPayload: res.text.length > 50,
     };
@@ -43,121 +46,98 @@ async function probeEndpoint(url: string, timeoutMs = 7000): Promise<ProbeResult
   }
 }
 
+/** Reuses the fetch analyzeDocs already performed instead of hitting the docs again. */
+function docsProbeFromSignals(signals: DocSignals, docsUrl: string): ProbeResult {
+  return {
+    url: docsUrl,
+    ok: signals.reachable,
+    status: signals.status ?? 0,
+    latencyMs: signals.latencyMs ?? 0,
+    contentType: "",
+    hasPayload: signals.bodySnippet.length > 50,
+  };
+}
+
 /**
- * Live docs probe: real HTTP checks against the docs/OpenAPI surface, scored per agent profile.
- * NOTE: this does NOT execute an agent. It measures reachability + machine-readable surfaces.
+ * Scores one agent profile against the shared probe results.
+ *
+ * Two of the five assertions are live HTTP checks (`probe:`); the other three
+ * are re-reads of signals already parsed out of the docs (`signal:`). The
+ * transcript prefixes keep that distinction visible — no agent is executed here.
  */
-export async function executeLiveAgentRun(
+export function evaluateAgentProfile(
   agent: AgentName,
   signals: DocSignals,
   jtbdPrompt: string,
-  baseDocsUrl: string,
-  openApiUrl?: string,
-): Promise<AgentRun> {
+  docsProbe: ProbeResult,
+  indexProbe: ProbeResult | null,
+): AgentRun {
   const startTime = performance.now();
   const transcript: string[] = [];
   let passedAssertions = 0;
-  const totalAssertions = 5;
 
   const nowStamp = () => new Date().toISOString().split("T")[1].slice(0, 8);
+  const log = (line: string) => transcript.push(`[${nowStamp()}] [${agent}] ${line}`);
 
-  transcript.push(`[${nowStamp()}] [${agent}] Docs probe started — live HTTP checks against published surfaces`);
-  transcript.push(`[${nowStamp()}] [${agent}] Target JTBD: "${jtbdPrompt.slice(0, 100)}…"`);
+  log("Docs probe started — live HTTP checks against published surfaces");
+  log(`Target JTBD: "${jtbdPrompt.slice(0, 100)}…"`);
 
-  // Assertion 1: Base Docs Reachability
-  const docsProbe = await probeEndpoint(baseDocsUrl, 8000);
+  // Assertion 1 (live): base docs reachability
   if (docsProbe.ok) {
     passedAssertions++;
-    transcript.push(
-      `[${nowStamp()}] [${agent}] PASS [probe:docs] ${docsProbe.url} -> HTTP ${docsProbe.status} (${docsProbe.latencyMs}ms)`,
-    );
+    log(`PASS [probe:docs] ${docsProbe.url} -> HTTP ${docsProbe.status} (${docsProbe.latencyMs}ms)`);
   } else {
-    transcript.push(
-      `[${nowStamp()}] [${agent}] FAIL [probe:docs] ${docsProbe.url} -> HTTP ${docsProbe.status || "ERR"} (${docsProbe.latencyMs}ms)`,
-    );
+    log(`FAIL [probe:docs] ${docsProbe.url} -> HTTP ${docsProbe.status || "ERR"} (${docsProbe.latencyMs}ms)`);
   }
 
-  // Assertion 2: Machine-Readable Index (/llms.txt or OpenAPI)
-  let indexProbe: ProbeResult | null = null;
-  if (openApiUrl) {
-    indexProbe = await probeEndpoint(openApiUrl, 6000);
-  } else {
-    try {
-      const parsed = new URL(baseDocsUrl);
-      indexProbe = await probeEndpoint(`${parsed.origin}/llms.txt`, 4000);
-    } catch {
-      indexProbe = null;
-    }
-  }
-
+  // Assertion 2 (live): machine-readable index (/llms.txt or OpenAPI)
   if (indexProbe && indexProbe.ok && indexProbe.hasPayload) {
     passedAssertions++;
-    transcript.push(
-      `[${nowStamp()}] [${agent}] PASS [probe:schema] Machine index located at ${indexProbe.url} (${indexProbe.latencyMs}ms)`,
-    );
+    log(`PASS [probe:schema] Machine index located at ${indexProbe.url} (${indexProbe.latencyMs}ms)`);
   } else {
-    transcript.push(
-      `[${nowStamp()}] [${agent}] WARN [probe:schema] No explicit llms.txt or openapi found; crawling unstructured HTML`,
-    );
+    log("WARN [probe:schema] No explicit llms.txt or openapi found; crawling unstructured HTML");
   }
 
-  // Assertion 3: Auth Contract Discovery
+  // Assertion 3 (parsed): auth contract
   if (signals.hasApiKeyAuth || (signals.hasAuthDocs && !signals.hasOauth)) {
     passedAssertions++;
-    transcript.push(
-      `[${nowStamp()}] [${agent}] PASS [probe:auth] Direct API key authorization contract verified`,
-    );
+    log("PASS [signal:auth] Direct API key authorization contract documented");
   } else if (signals.hasOauth && !signals.hasApiKeyAuth) {
-    transcript.push(
-      `[${nowStamp()}] [${agent}] FAIL [probe:auth] Interactive OAuth barrier detected without unattended service token`,
-    );
+    log("FAIL [signal:auth] Interactive OAuth barrier documented without an unattended service token");
   } else {
-    transcript.push(
-      `[${nowStamp()}] [${agent}] WARN [probe:auth] Ambiguous auth headers in parsed documentation`,
-    );
+    log("WARN [signal:auth] Ambiguous auth headers in parsed documentation");
   }
 
-  // Assertion 4: Tool & Action Surface Discovery
-  const hasCallableSurface = signals.hasMcpMention || signals.hasCliMention || signals.hasOpenApiMention;
-  if (hasCallableSurface) {
+  // Assertion 4 (parsed): callable tool surface
+  if (signals.hasMcpMention || signals.hasCliMention || signals.hasOpenApiMention) {
     passedAssertions++;
-    transcript.push(
-      `[${nowStamp()}] [${agent}] PASS [probe:tools] Verified callable API tools & parameter contracts`,
-    );
+    log("PASS [signal:tools] Callable API tools & parameter contracts documented");
   } else {
-    transcript.push(
-      `[${nowStamp()}] [${agent}] FAIL [probe:tools] Missing structured schema; agent must hallucinate endpoint signatures`,
-    );
+    log("FAIL [signal:tools] No structured schema documented; agent must guess endpoint signatures");
   }
 
-  // Assertion 5: Error Schema & Recovery
+  // Assertion 5 (parsed): error schema
   if (signals.hasErrorDocs) {
     passedAssertions++;
-    transcript.push(
-      `[${nowStamp()}] [${agent}] PASS [probe:errors] Structured error remediation definitions detected`,
-    );
+    log("PASS [signal:errors] Structured error remediation documented");
   } else {
-    transcript.push(
-      `[${nowStamp()}] [${agent}] WARN [probe:errors] No machine-readable error recovery schema discovered`,
-    );
+    log("WARN [signal:errors] No machine-readable error recovery schema documented");
   }
 
-  const failStep = attributeFailStep(signals, agent);
+  const failStep = attributeFailStep(signals);
   const durationMs = Math.round(performance.now() - startTime);
+  const isSuccess = passedAssertions >= LIVE_PASS_THRESHOLD && failStep === "none";
+  const finalFailStep: FailStep = isSuccess
+    ? "none"
+    : failStep === "none"
+      ? "api-call"
+      : failStep;
 
-  // Probe "success" = docs reachable + machine-readable surfaces present
-  const isSuccess = passedAssertions >= 4 && failStep === "none" && docsProbe.ok;
-  const finalFailStep: FailStep = isSuccess ? "none" : failStep === "none" ? "api-call" : failStep;
-
-  if (isSuccess) {
-    transcript.push(
-      `[${nowStamp()}] [${agent}] SUCCESS — Probe verified ${passedAssertions}/${totalAssertions} assertions in ${durationMs}ms`,
-    );
-  } else {
-    transcript.push(
-      `[${nowStamp()}] [${agent}] FAIL @ ${finalFailStep} — Probe blocked (${passedAssertions}/${totalAssertions} passed)`,
-    );
-  }
+  log(
+    isSuccess
+      ? `SUCCESS — Probe verified ${passedAssertions}/${TOTAL_ASSERTIONS} assertions in ${durationMs}ms`
+      : `FAIL @ ${finalFailStep} — Probe blocked (${passedAssertions}/${TOTAL_ASSERTIONS} passed)`,
+  );
 
   return {
     agent,
@@ -166,24 +146,25 @@ export async function executeLiveAgentRun(
     durationMs,
     transcript,
     notes: isSuccess
-      ? `Live probe passed ${passedAssertions}/${totalAssertions} verified assertions.`
-      : `Live probe blocked at ${finalFailStep} (${passedAssertions}/${totalAssertions} passed).`,
+      ? `Live probe passed ${passedAssertions}/${TOTAL_ASSERTIONS} assertions (2 HTTP, 3 parsed).`
+      : `Live probe blocked at ${finalFailStep} (${passedAssertions}/${TOTAL_ASSERTIONS} passed).`,
     runnerMode: "live",
     liveMetrics: {
       httpStatus: docsProbe.status,
       latencyMs: docsProbe.latencyMs,
-      dnsResolved: docsProbe.status > 0,
+      reachable: docsProbe.ok,
       probePath: docsProbe.url,
       passedAssertions,
-      totalAssertions,
+      totalAssertions: TOTAL_ASSERTIONS,
       endpointProbed: indexProbe?.url ?? docsProbe.url,
     },
   };
 }
 
 /**
- * Runs the live docs probe once per agent profile. The network probes are shared;
- * only fail-step attribution differs per agent.
+ * Probes the surface once, then scores each agent profile against those results.
+ * Probing per agent issued the same requests three times over and let the three
+ * runs report different latencies for one target.
  */
 export async function runLiveAgentEvaluation(
   signals: DocSignals,
@@ -191,11 +172,22 @@ export async function runLiveAgentEvaluation(
   docsUrl: string,
   openApiUrl?: string,
 ): Promise<AgentRun[]> {
+  const docsProbe = docsProbeFromSignals(signals, docsUrl);
+
+  let indexProbe: ProbeResult | null = null;
+  if (openApiUrl) {
+    indexProbe = await probeEndpoint(openApiUrl, 6000);
+  } else {
+    try {
+      const { origin } = new URL(docsUrl);
+      indexProbe = await probeEndpoint(`${origin}/llms.txt`, 4000);
+    } catch {
+      indexProbe = null;
+    }
+  }
+
   const agents: AgentName[] = ["claude-code", "cursor-agent", "codex"];
-  const runs = await Promise.all(
-    agents.map((agent) =>
-      executeLiveAgentRun(agent, signals, jtbdPrompt, docsUrl, openApiUrl),
-    ),
+  return agents.map((agent) =>
+    evaluateAgentProfile(agent, signals, jtbdPrompt, docsProbe, indexProbe),
   );
-  return runs;
 }

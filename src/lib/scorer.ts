@@ -1,5 +1,4 @@
-import type { AgentName, AgentRun, FailStep, RankedFix, ScoreRequest } from "./types";
-import { getJtbd } from "./jtbds";
+import type { AgentName, AgentRun, FailStep, RankedFix } from "./types";
 import { safeFetch } from "./safe-fetch";
 
 export interface DocSignals {
@@ -16,6 +15,8 @@ export interface DocSignals {
   hasCodeSamples: boolean;
   hasQuickstart: boolean;
   bodySnippet: string;
+  /** Wall-clock time of the docs fetch, reused by the live probe. */
+  latencyMs?: number;
   error?: string;
 }
 
@@ -43,41 +44,38 @@ export async function analyzeDocs(
     bodySnippet: "",
   };
 
+  const startedAt = performance.now();
   try {
     const res = await safeFetch(docsUrl, {
       headers: { "User-Agent": "FirstSkillBot/1.0 (+https://firstskill.dev)" },
       timeoutMs: 12000,
     });
+    signals.latencyMs = Math.round(performance.now() - startedAt);
     signals.reachable = res.ok;
     signals.status = res.status;
-    const text = res.text.slice(0, 120_000);
-    signals.bodySnippet = text.slice(0, 2000);
-    const lower = text.toLowerCase();
-
-    signals.hasOpenApiMention =
-      /openapi|swagger|\.yaml|\.json.*api/i.test(text) || Boolean(openApiUrl);
-    signals.hasMcpMention = /\bmcp\b|model context protocol/i.test(text);
-    signals.hasCliMention = /\bcli\b|command[- ]line|npx /i.test(text);
-    signals.hasAuthDocs = /auth|api[_ ]?key|bearer|token/i.test(text);
-    signals.hasApiKeyAuth = /api[_ ]?key|x-api-key/i.test(text);
-    signals.hasOauth = /oauth|oidc|authorization code/i.test(text);
-    signals.hasErrorDocs = /error code|status code|4\d\d|retry/i.test(text);
-    signals.hasCodeSamples = /curl |```|fetch\(|axios/i.test(text);
-    signals.hasQuickstart = /quickstart|getting started|5 minutes|in minutes/i.test(
-      lower,
-    );
+    const html = res.text.slice(0, 120_000);
+    signals.bodySnippet = html.slice(0, 2000);
+    Object.assign(signals, detectSignals(html, Boolean(openApiUrl)));
   } catch (e) {
+    signals.latencyMs = Math.round(performance.now() - startedAt);
     signals.error = e instanceof Error ? e.message : "fetch failed";
   }
 
+  let candidates: string[] = [];
   try {
     const base = new URL(docsUrl);
-    const candidates = [
+    candidates = [
       `${base.origin}/llms.txt`,
       `${base.origin}/.well-known/llms.txt`,
       docsUrl.replace(/\/?$/, "/llms.txt"),
     ];
-    for (const url of candidates) {
+  } catch {
+    // unparseable docsUrl — nothing to probe
+  }
+
+  for (const url of candidates) {
+    // Per-candidate catch: a network error on the first path must not skip the rest.
+    try {
       const r = await safeFetch(url, {
         headers: { "User-Agent": "FirstSkillBot/1.0" },
         timeoutMs: 6000,
@@ -89,9 +87,9 @@ export async function analyzeDocs(
           break;
         }
       }
+    } catch {
+      // try the next candidate
     }
-  } catch {
-    // ignore llms probe failures
   }
 
   if (openApiUrl) {
@@ -107,6 +105,109 @@ export async function analyzeDocs(
   }
 
   return signals;
+}
+
+/**
+ * A 4xx/5xx literal only counts as error documentation when error vocabulary sits
+ * in the same sentence. A bare `\b[45]\d\d\b` matched "$499" and "500 companies",
+ * which made hasErrorDocs true on almost every marketing page.
+ */
+const STATUS_CODE_IN_CONTEXT =
+  /\b[45]\d\d\b[^.!?]{0,40}\b(error|status|response|returns?|returned|means|indicates)\b|\b(error|status|response|returns?|throws?|http)\b[^.!?]{0,40}\b[45]\d\d\b/i;
+
+/** Markup that carries no prose: scripts, styles, and the tags themselves. */
+function toVisibleText(html: string): string {
+  return html
+    .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ");
+}
+
+/**
+ * Content signals, matched against visible prose rather than raw markup.
+ *
+ * Matching raw HTML made these near-universally true: `<meta name="author">` lit
+ * up hasAuthDocs, `width:400px` lit up hasErrorDocs, and an unanchored
+ * `/\.json.*api/` matched any page with both strings anywhere in 120KB. The
+ * result was ~+3.5 on nearly every reachable site, compressing the 0-10 range.
+ */
+export function detectSignals(
+  html: string,
+  hasOpenApiUrl = false,
+): Pick<
+  DocSignals,
+  | "hasOpenApiMention"
+  | "hasMcpMention"
+  | "hasCliMention"
+  | "hasAuthDocs"
+  | "hasApiKeyAuth"
+  | "hasOauth"
+  | "hasErrorDocs"
+  | "hasCodeSamples"
+  | "hasQuickstart"
+> {
+  const text = toVisibleText(html);
+  // Code samples are markup, not prose, so they are detected on the raw HTML.
+  const hasCodeBlock = /<pre\b|<code\b|```/i.test(html);
+
+  return {
+    hasOpenApiMention:
+      hasOpenApiUrl || /\bopenapi\b|\bswagger\b|openapi\.(json|ya?ml)/i.test(text),
+    hasMcpMention: /\bmcp\b|model context protocol/i.test(text),
+    hasCliMention: /\bcli\b|command[- ]line|\bnpx\b/i.test(text),
+    // \bauth\b so "author" does not count as auth documentation.
+    hasAuthDocs:
+      /\bauth\b|\bauthentication\b|\bauthorization\b|api[_ -]?key|bearer token|access token/i.test(
+        text,
+      ),
+    hasApiKeyAuth: /api[_ -]?key|x-api-key/i.test(text),
+    hasOauth: /\boauth\b|\boidc\b|authorization code/i.test(text),
+    hasErrorDocs:
+      /error code|status code|error handling|\brate limit|\bretry\b/i.test(text) ||
+      STATUS_CODE_IN_CONTEXT.test(text),
+    hasCodeSamples: hasCodeBlock || /\bcurl\b|fetch\(|\baxios\b/i.test(text),
+    hasQuickstart: /quickstart|quick start|getting started|in \d+ minutes/i.test(text),
+  };
+}
+
+/** Credit every agent gets for a surface that already clears every fail step. */
+const BASE_SUCCESS_BONUS = 0.15;
+
+const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+
+const AGENT_SALT: Record<AgentName, number> = {
+  "claude-code": 0,
+  "cursor-agent": 4111,
+  codex: 8219,
+};
+
+/**
+ * FNV-1a over the boolean signal flags. Keyed on the flags rather than the page
+ * text so re-scanning a surface that ships a nonce or timestamp in its HTML
+ * yields the same score, and so the digest is evenly distributed.
+ */
+function signalHash(s: DocSignals): number {
+  const key = [
+    s.reachable,
+    s.hasLlmsTxt,
+    s.hasOpenApiMention,
+    s.hasMcpMention,
+    s.hasCliMention,
+    s.hasAuthDocs,
+    s.hasApiKeyAuth,
+    s.hasOauth,
+    s.hasErrorDocs,
+    s.hasCodeSamples,
+    s.hasQuickstart,
+  ]
+    .map((b) => (b ? "1" : "0"))
+    .join("");
+  let h = 0x811c9dc5;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h;
 }
 
 function scoreFromSignals(s: DocSignals): number {
@@ -126,14 +227,13 @@ function scoreFromSignals(s: DocSignals): number {
 }
 
 /**
- * YOUR TURN (learning mode): refine fail-step attribution.
- * Map DocSignals + agent personality → the step where a real agent typically dies.
- * Keep return type FailStep. Good defaults already exist below — improve the edge cases.
+ * The step where an agent typically dies on this surface.
+ *
+ * Attribution is a property of the docs, not of the agent — per-agent capability
+ * is modelled once, in `agentBias`. Keeping a second agent axis here contradicted
+ * that ordering (it made cursor-agent score below codex).
  */
-export function attributeFailStep(
-  signals: DocSignals,
-  agent: AgentName,
-): FailStep {
+export function attributeFailStep(signals: DocSignals): FailStep {
   if (!signals.reachable) return "discovery";
   if (!signals.hasQuickstart && !signals.hasCodeSamples) return "docs";
   if (!signals.hasAuthDocs) return "auth";
@@ -141,7 +241,7 @@ export function attributeFailStep(
   if (!signals.hasOpenApiMention && !signals.hasMcpMention && !signals.hasCliMention) {
     return "tool-selection";
   }
-  if (!signals.hasErrorDocs && agent === "cursor-agent") return "error-recovery";
+  if (!signals.hasErrorDocs) return "error-recovery";
   if (!signals.hasMcpMention && !signals.hasCliMention) return "api-call";
   return "none";
 }
@@ -152,29 +252,26 @@ function simulateOneRun(
   jtbdPrompt: string,
   baseScore: number,
 ): AgentRun {
-  const failStep = attributeFailStep(signals, agent);
-  // Agents with MCP/CLI bias succeed more often at higher base scores
+  const failStep = attributeFailStep(signals);
+  // Agents with stronger MCP/CLI tool use clear the bar more often.
   const agentBias: Record<AgentName, number> = {
     "claude-code": 0.05,
     "cursor-agent": 0,
     codex: -0.05,
   };
-  const threshold = 0.55 - agentBias[agent];
-  const successProb = Math.min(0.95, Math.max(0.05, baseScore / 10 + agentBias[agent]));
-  // Deterministic-ish from product signals + agent name
-  const hash = [...(signals.bodySnippet + agent)].reduce(
-    (a, c) => a + c.charCodeAt(0),
-    0,
-  );
-  const roll = (hash % 100) / 100;
-  const success = signals.reachable && failStep === "none" && roll < successProb + 0.15
-    ? true
-    : signals.reachable && baseScore >= 7 && failStep === "none"
-      ? roll < threshold + 0.4
-      : failStep === "none" && roll < successProb;
-
-  const actuallySucceeds = success && failStep === "none";
-  const step = actuallySucceeds ? ("none" as FailStep) : failStep === "none" ? "api-call" : failStep;
+  // No reachability check needed: attributeFailStep returns "discovery" when
+  // the docs are unreachable, so failStep === "none" already implies it.
+  const successProb = clamp(baseScore / 10 + agentBias[agent] + BASE_SUCCESS_BONUS, 0.05, 0.95);
+  const hash = signalHash(signals);
+  // One roll per surface, shared by all agents, so a higher-bias agent always
+  // succeeds wherever a lower-bias one does.
+  const roll = (hash % 1000) / 1000;
+  const actuallySucceeds = failStep === "none" && roll < successProb;
+  const step: FailStep = actuallySucceeds
+    ? "none"
+    : failStep === "none"
+      ? "api-call"
+      : failStep;
 
   const transcript: string[] = [
     `[${agent}] Goal: ${jtbdPrompt.slice(0, 120)}…`,
@@ -208,7 +305,7 @@ function simulateOneRun(
     agent,
     success: actuallySucceeds,
     failStep: step,
-    durationMs: 8000 + (hash % 12000),
+    durationMs: 8000 + ((hash + AGENT_SALT[agent]) % 12000),
     transcript,
     notes: actuallySucceeds
       ? "Agent completed the JTBD without human intervention."
@@ -225,17 +322,13 @@ export function simulateRuns(
   return agents.map((a) => simulateOneRun(a, signals, jtbdPrompt, base));
 }
 
-export function rankedFixes(signals: DocSignals, runs: AgentRun[]): RankedFix[] {
-  const failCounts = new Map<FailStep, number>();
-  for (const r of runs) {
-    if (!r.success) failCounts.set(r.failStep, (failCounts.get(r.failStep) ?? 0) + 1);
-  }
+/** Cap on fixes shown, including the always-present agent-skill wedge. */
+const MAX_FIXES = 6;
 
-  const fixes: RankedFix[] = [];
-  let p = 1;
-
+export function rankedFixes(signals: DocSignals): RankedFix[] {
+  const fixes: Omit<RankedFix, "priority">[] = [];
   const push = (title: string, detail: string) => {
-    fixes.push({ priority: p++, title, detail });
+    fixes.push({ title, detail });
   };
 
   if (!signals.reachable) {
@@ -280,13 +373,19 @@ export function rankedFixes(signals: DocSignals, runs: AgentRun[]): RankedFix[] 
     );
   }
 
-  // Always recommend an official skill as the FirstSkill wedge
-  push(
-    "Publish an official agent skill",
-    "A tested SKILL.md with auth, endpoints, and gotchas is how agents keep choosing you. FirstSkill packs this.",
-  );
+  // The agent-skill wedge always ships. Its slot is reserved before the cap:
+  // appending then slicing dropped it on exactly the surfaces that need it most,
+  // where all seven conditional fixes already fill the list.
+  const ranked = [
+    ...fixes.slice(0, MAX_FIXES - 1),
+    {
+      title: "Publish an official agent skill",
+      detail:
+        "A tested SKILL.md with auth, endpoints, and gotchas is how agents keep choosing you. FirstSkill packs this.",
+    },
+  ];
 
-  return fixes.slice(0, 6);
+  return ranked.map((fix, i) => ({ priority: i + 1, ...fix }));
 }
 
 export function computeScore(runs: AgentRun[], signals: DocSignals): {
@@ -303,23 +402,3 @@ export function computeScore(runs: AgentRun[], signals: DocSignals): {
     successRate,
   };
 }
-
-import { runLiveAgentEvaluation } from "./live-runner";
-
-export async function runScorecardAnalysis(req: ScoreRequest) {
-  const jtbd =
-    req.customJtbd?.trim() ||
-    getJtbd(req.jtbdId)?.prompt ||
-    "Complete the primary API job documented on the site.";
-  const signals = await analyzeDocs(req.docsUrl, req.openApiUrl);
-  
-  const runs =
-    req.runnerMode === "live"
-      ? await runLiveAgentEvaluation(signals, jtbd, req.docsUrl, req.openApiUrl)
-      : simulateRuns(signals, jtbd);
-
-  const { score, successRate } = computeScore(runs, signals);
-  const fixes = rankedFixes(signals, runs);
-  return { jtbd, signals, runs, score, successRate, fixes, runnerMode: req.runnerMode ?? "heuristic" };
-}
-

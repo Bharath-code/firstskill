@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { ScoreRequest } from "@/lib/types";
-import { runScorecardAnalysis } from "@/lib/scorer";
+import { runScorecardAnalysis } from "@/lib/analysis";
 import {
   newId,
   slugify,
