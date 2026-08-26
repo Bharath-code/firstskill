@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { assertPublicUrl, BlockedUrlError } from "./safe-fetch";
 
-// Run: npx tsx src/lib/safe-fetch.test.ts
+// Run: npm test
 const blocked = [
   "http://169.254.169.254/latest/meta-data/", // cloud metadata
   "http://127.0.0.1:6379",
