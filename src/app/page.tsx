@@ -69,9 +69,8 @@ export default async function HomePage() {
       <section className="fs-section">
         <h2>What we sell (and what we don’t)</h2>
         <p>
-          We don’t host MCP for you. We don’t fight Netlify for the “AX” brand. We prove
-          agents can complete <em>one</em> money-path job, then deliver the SKILL.md +
-          references that raise first-success rate.
+          We don’t host MCP for you. We prove agents can complete <em>one</em> money-path
+          job, then deliver the SKILL.md + references that raise first-success rate.
         </p>
       </section>
     </>
