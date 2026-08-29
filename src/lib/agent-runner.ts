@@ -88,7 +88,12 @@ export function parseVerdict(input: unknown): Verdict {
   };
 }
 
-function systemPrompt(jtbd: string, docsUrl: string, openApiUrl?: string): string {
+function systemPrompt(
+  jtbd: string,
+  docsUrl: string,
+  openApiUrl?: string,
+  skillMd?: string,
+): string {
   return `You are an autonomous coding agent evaluating whether a product's public API is usable by agents.
 
 Job to be done: ${jtbd}
@@ -100,7 +105,8 @@ Rules:
 - Do not pretend a step succeeded. An unauthenticated 401 on the correct endpoint is a
   useful result: it means discovery and endpoint selection worked and auth is the wall.
 - You have at most ${MAX_HTTP_CALLS} HTTP requests. Spend them deliberately.
-- Finish by calling report_result exactly once.`;
+- Finish by calling report_result exactly once.
+${skillMd ? `\nAn official agent skill for this product is installed. Follow it:\n\n${skillMd}` : ""}`;
 }
 
 /**
@@ -111,6 +117,7 @@ export async function runAgentEvaluation(
   jtbd: string,
   docsUrl: string,
   openApiUrl?: string,
+  skillMd?: string,
 ): Promise<AgentRun> {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new NoAgentCredentialsError("ANTHROPIC_API_KEY is not set");
@@ -131,13 +138,13 @@ export async function runAgentEvaluation(
   let lastUrl: string | undefined;
   let verdict: Verdict | null = null;
 
-  log(`START — ${jtbd}`);
+  log(`START — ${jtbd}${skillMd ? " (with skill pack installed)" : ""}`);
 
   for (let turn = 0; turn < MAX_TURNS && !verdict; turn++) {
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 16000,
-      system: systemPrompt(jtbd, docsUrl, openApiUrl),
+      system: systemPrompt(jtbd, docsUrl, openApiUrl, skillMd),
       tools: [httpTool, reportTool],
       messages,
     });

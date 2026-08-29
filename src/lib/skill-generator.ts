@@ -9,15 +9,8 @@ function skillName(product: string): string {
     .slice(0, 64);
 }
 
-export function generateSkillPack(
-  card: Scorecard,
-  opts?: { afterBoost?: number },
-): SkillPack {
+export function generateSkillPack(card: Scorecard): SkillPack {
   const name = skillName(card.productName);
-  const afterScore = Math.min(
-    10,
-    Math.round((card.score + (opts?.afterBoost ?? 3.5)) * 10) / 10,
-  );
 
   const failSteps = card.runs
     .filter((r) => !r.success)
@@ -179,7 +172,8 @@ mkdir -p ~/.claude/skills/${name}/references
     },
     mcpSubsetNotes,
     beforeScore: card.score,
-    afterScore,
+    // afterScore stays unset until verifyPack re-runs the eval. A number we
+    // made up is a refund waiting to happen.
     createdAt: new Date().toISOString(),
     status: "ready",
   };

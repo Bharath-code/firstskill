@@ -77,7 +77,9 @@ export interface SkillPack {
   };
   mcpSubsetNotes: string;
   beforeScore: number;
-  afterScore: number;
+  /** Set only after a second eval actually ran with this pack installed. */
+  afterScore?: number;
+  verifiedAt?: string;
   createdAt: string;
   status: "draft" | "ready" | "purchased";
 }

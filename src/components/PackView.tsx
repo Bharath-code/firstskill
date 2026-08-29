@@ -9,7 +9,8 @@ export interface PackSummary {
   productName: string;
   jtbd: string;
   beforeScore: number;
-  afterScore: number;
+  afterScore?: number;
+  verifiedAt?: string;
   status: "draft" | "ready" | "purchased";
 }
 
@@ -86,8 +87,12 @@ export function PackView({
           </div>
           <span aria-hidden>→</span>
           <div>
-            <span className="fs-muted">Projected after</span>
-            <strong>{pack.afterScore.toFixed(1)}</strong>
+            <span className="fs-muted">
+              {pack.afterScore === undefined ? "After" : "After (verified)"}
+            </span>
+            <strong>
+              {pack.afterScore === undefined ? "not yet verified" : pack.afterScore.toFixed(1)}
+            </strong>
           </div>
         </div>
       </header>
