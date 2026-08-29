@@ -60,6 +60,11 @@ export interface Scorecard {
   createdAt: string;
   skillPackId?: string;
   runnerMode?: RunnerMode;
+  /** Score over time. Appended by the recheck cron; oldest entries dropped. */
+  history?: { score: number; at: string }[];
+  lastCheckedAt?: string;
+  /** Set when the most recent recheck dropped by REGRESSION_DELTA or more. */
+  regressed?: boolean;
 }
 
 export interface SkillPack {
