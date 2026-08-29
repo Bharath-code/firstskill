@@ -3,6 +3,7 @@
 import { useState } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import * as Dialog from "@radix-ui/react-dialog";
+import { zipFiles } from "@/lib/skill-generator";
 
 export interface PackSummary {
   id: string;
@@ -52,14 +53,14 @@ export function PackView({
 
   function downloadAll() {
     if (!files) return;
-    // ponytail: one concatenated file beats N blocked downloads; real .zip if users ask.
-    const bundle = Object.entries(files)
-      .map(([path, content]) => `\n\n===== ${path} =====\n\n${content}`)
-      .join("");
-    const url = URL.createObjectURL(new Blob([bundle], { type: "text/plain;charset=utf-8" }));
+    // A real zip, because the pack's own install instructions say `unzip`.
+    const zip = zipFiles(files);
+    const url = URL.createObjectURL(
+      new Blob([zip as unknown as BlobPart], { type: "application/zip" }),
+    );
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${pack.productName.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-skill-pack.txt`;
+    a.download = `${pack.productName.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-skill-pack.zip`;
     a.click();
     URL.revokeObjectURL(url);
   }

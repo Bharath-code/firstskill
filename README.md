@@ -31,13 +31,13 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Pricing (as shipped)
 
-- Free first-success score (3 simulated agent runs)
+- Free first-success score (heuristic estimate or a real agent run)
 - **$197** early-bird skill pack (standard **$297**)
 - Checkout is **simulated** until `STRIPE_SECRET_KEY` is wired
 
 ## Stack
 
-Next.js App Router, file-backed JSON store in `data/` (swap for Postgres when you scale).
+Next.js App Router, Postgres (Neon). Set `ANTHROPIC_API_KEY` to enable real agent runs; without it scoring falls back to the heuristic runner and says so.
 
 ## Kill criteria
 
