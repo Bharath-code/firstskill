@@ -52,13 +52,14 @@ export async function POST(req: Request) {
     public: body.makePublic !== false,
     seeded: false,
     createdAt: new Date().toISOString(),
-    runnerMode: body.runnerMode ?? "heuristic",
+    runnerMode: analysis.runnerMode,
   });
 
 
   return NextResponse.json({
     scorecard: card,
     signals: analysis.signals,
+    runnerNote: analysis.runnerNote,
     jtbdLabel: getJtbd(body.jtbdId)?.label,
   });
 }

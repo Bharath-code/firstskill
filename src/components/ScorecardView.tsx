@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import type { Scorecard } from "@/lib/types";
+import type { RunnerMode, Scorecard } from "@/lib/types";
+
+const MODE_LABELS: Record<RunnerMode, string> = {
+  agent: "Real agent run",
+  live: "Live docs probe",
+  heuristic: "Heuristic estimate",
+};
 import Link from "next/link";
 
 export function ScorecardView({ card }: { card: Scorecard }) {
@@ -57,8 +63,8 @@ export function ScorecardView({ card }: { card: Scorecard }) {
       <section className="fs-section">
         <div className="fs-section-header">
           <h2>Agent runs</h2>
-          <span className={`fs-mode-pill ${card.runnerMode === "live" ? "fs-mode-pill--live" : ""}`}>
-            {card.runnerMode === "live" ? "Live docs probe" : "Heuristic estimate"}
+          <span className={`fs-mode-pill ${card.runnerMode === "heuristic" ? "" : "fs-mode-pill--live"}`}>
+            {MODE_LABELS[card.runnerMode ?? "heuristic"]}
           </span>
         </div>
         <ul className="fs-run-list">

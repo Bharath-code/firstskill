@@ -11,7 +11,7 @@ export type FailStep =
   | "error-recovery"
   | "none";
 
-export type RunnerMode = "heuristic" | "live";
+export type RunnerMode = "heuristic" | "live" | "agent";
 
 export interface LiveMetrics {
   httpStatus?: number;

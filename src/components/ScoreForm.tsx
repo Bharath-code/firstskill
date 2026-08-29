@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Niche } from "@/lib/types";
+import type { Niche, RunnerMode } from "@/lib/types";
 
 const NICHES_CLIENT: { id: Niche; label: string }[] = [
   { id: "forms", label: "Form APIs" },
@@ -28,7 +28,7 @@ export function ScoreForm() {
   const [openApiUrl, setOpenApiUrl] = useState("");
   const [email, setEmail] = useState("");
   const [makePublic, setMakePublic] = useState(true);
-  const [runnerMode, setRunnerMode] = useState<"heuristic" | "live">("live");
+  const [runnerMode, setRunnerMode] = useState<RunnerMode>("agent");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -155,6 +155,17 @@ export function ScoreForm() {
         <div className="fs-eval-mode-toggle">
           <button
             type="button"
+            className={`fs-eval-mode-btn ${runnerMode === "agent" ? "active" : ""}`}
+            onClick={() => setRunnerMode("agent")}
+          >
+            <span className="fs-eval-dot fs-eval-dot--live" />
+            <div>
+              <strong>Real agent run</strong>
+              <small>An agent reads your docs and calls your API for real. Full transcript.</small>
+            </div>
+          </button>
+          <button
+            type="button"
             className={`fs-eval-mode-btn ${runnerMode === "live" ? "active" : ""}`}
             onClick={() => setRunnerMode("live")}
           >
@@ -191,9 +202,11 @@ export function ScoreForm() {
 
       <button className="fs-btn fs-btn--primary" type="submit" disabled={loading}>
         {loading
-          ? runnerMode === "live"
-            ? "Probing your docs…"
-            : "Running agents…"
+          ? runnerMode === "agent"
+            ? "Agent is working…"
+            : runnerMode === "live"
+              ? "Probing your docs…"
+              : "Running agents…"
           : "Get first-success score"}
       </button>
     </form>

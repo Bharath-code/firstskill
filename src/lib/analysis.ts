@@ -1,7 +1,8 @@
-import type { ScoreRequest } from "./types";
+import type { RunnerMode, ScoreRequest } from "./types";
 import { getJtbd } from "./jtbds";
 import { analyzeDocs, computeScore, rankedFixes, simulateRuns } from "./scorer";
 import { runLiveAgentEvaluation } from "./live-runner";
+import { runAgentEvaluation, NoAgentCredentialsError } from "./agent-runner";
 
 /**
  * Composes the scorer and the live runner. Lives outside scorer.ts so that
@@ -15,10 +16,28 @@ export async function runScorecardAnalysis(req: ScoreRequest) {
 
   const signals = await analyzeDocs(req.docsUrl, req.openApiUrl);
 
-  const runs =
-    req.runnerMode === "live"
-      ? await runLiveAgentEvaluation(signals, jtbd, req.docsUrl, req.openApiUrl)
-      : simulateRuns(signals, jtbd);
+  let runnerMode: RunnerMode = req.runnerMode ?? "heuristic";
+  let runnerNote: string | undefined;
+  let runs;
+
+  if (runnerMode === "agent") {
+    try {
+      runs = [await runAgentEvaluation(jtbd, req.docsUrl, req.openApiUrl)];
+    } catch (e) {
+      // Degrade loudly. Reporting a heuristic score as a real agent run is the
+      // one lie this product cannot afford.
+      runnerMode = "heuristic";
+      runnerNote =
+        e instanceof NoAgentCredentialsError
+          ? "No agent credentials configured — this is a heuristic estimate, not a real agent run."
+          : "Agent run failed to start — this is a heuristic estimate, not a real agent run.";
+      runs = simulateRuns(signals, jtbd);
+    }
+  } else if (runnerMode === "live") {
+    runs = await runLiveAgentEvaluation(signals, jtbd, req.docsUrl, req.openApiUrl);
+  } else {
+    runs = simulateRuns(signals, jtbd);
+  }
 
   const { score, successRate } = computeScore(runs, signals);
   const fixes = rankedFixes(signals);
@@ -30,6 +49,7 @@ export async function runScorecardAnalysis(req: ScoreRequest) {
     score,
     successRate,
     fixes,
-    runnerMode: req.runnerMode ?? "heuristic",
+    runnerMode,
+    runnerNote,
   };
 }
