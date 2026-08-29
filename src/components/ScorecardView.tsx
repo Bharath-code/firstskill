@@ -14,6 +14,23 @@ export function ScorecardView({ card }: { card: Scorecard }) {
   const [email, setEmail] = useState(card.email ?? "");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // Env, not window.location: the snippet is copied into someone else's README,
+  // so it must render identically on the server and never point at a preview host.
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "https://firstskill.dev";
+  const reportUrl = `${origin}/score/${card.slug}`;
+  const badgeMarkdown = `[![first-skill-score ${card.score.toFixed(1)}/10](${origin}/api/badge/${card.id})](${reportUrl})`;
+
+  async function copyBadge() {
+    try {
+      await navigator.clipboard.writeText(badgeMarkdown);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setMsg("Clipboard unavailable — select the snippet and copy manually.");
+    }
+  }
 
   async function requestPack() {
     if (!email.includes("@")) {
@@ -50,15 +67,35 @@ export function ScorecardView({ card }: { card: Scorecard }) {
           <span className="fs-score-den">/ 10</span>
           <span className="fs-score-rate">{pct}% agent success</span>
         </div>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          className="fs-badge"
-          src={`/api/badge/${card.id}`}
-          alt={`first-skill-score ${card.score}`}
-          width={220}
-          height={36}
-        />
+        <a href={reportUrl}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            className="fs-badge"
+            src={`/api/badge/${card.id}`}
+            alt={`first-skill-score ${card.score}`}
+            width={220}
+            height={36}
+          />
+        </a>
       </header>
+
+      <section className="fs-section fs-badge-embed">
+        <div className="fs-section-header">
+          <h2>Put this in your README</h2>
+          <Link className="fs-badge-embed-link" href={`/leaderboard?niche=${card.niche}`}>
+            See the {card.niche} leaderboard →
+          </Link>
+        </div>
+        <p className="fs-muted">
+          The badge re-renders on every check, so it stays honest as your API changes.
+        </p>
+        <div className="fs-badge-embed-row">
+          <code className="fs-badge-embed-code">{badgeMarkdown}</code>
+          <button type="button" className="fs-copy-btn" onClick={copyBadge}>
+            {copied ? "Copied" : "Copy"}
+          </button>
+        </div>
+      </section>
 
       <section className="fs-section">
         <div className="fs-section-header">

@@ -1030,3 +1030,38 @@ a:hover {
   overflow-x: auto;
   scrollbar-width: thin;
 }
+
+.fs-badge-embed .fs-muted {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+}
+
+.fs-badge-embed-link {
+  font-size: 0.8rem;
+  color: var(--teal);
+  text-decoration: none;
+}
+
+.fs-badge-embed-link:hover {
+  text-decoration: underline;
+}
+
+.fs-badge-embed-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+}
+
+.fs-badge-embed-code {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--paper-dim);
+}
