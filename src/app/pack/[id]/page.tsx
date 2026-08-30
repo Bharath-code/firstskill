@@ -25,6 +25,7 @@ export default async function PackPage({
         jtbd: pack.jtbd,
         beforeScore: pack.beforeScore,
         afterScore: pack.afterScore,
+        verifiedAt: pack.verifiedAt,
         status: pack.status,
       }}
       // Paid content crosses the network only after a verified payment.

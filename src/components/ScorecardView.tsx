@@ -1,17 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import type { Scorecard } from "@/lib/types";
-import Link from "next/link";
+import type { RunnerMode, Scorecard } from "@/lib/types";
+
+const MODE_LABELS: Record<RunnerMode, string> = {
+  agent: "Real agent run",
+  live: "Live docs probe",
+  heuristic: "Heuristic estimate",
+};
 
 export function ScorecardView({ card }: { card: Scorecard }) {
   const [email, setEmail] = useState(card.email ?? "");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // Env, not window.location: the snippet is copied into someone else's README,
+  // so it must render identically on the server and never point at a preview host.
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "https://firstskill.dev";
+  const reportUrl = `${origin}/score/${card.slug}`;
+  const badgeMarkdown = `[![first-skill-score ${card.score.toFixed(1)}/10](${origin}/api/badge/${card.id})](${reportUrl})`;
+
+  async function copyBadge() {
+    try {
+      await navigator.clipboard.writeText(badgeMarkdown);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setMsg("Clipboard unavailable — select the snippet and copy manually.");
+    }
+  }
 
   async function requestPack() {
     if (!email.includes("@")) {
-      setMsg("Enter a valid email to generate your skill pack.");
+      setMsg("Enter a valid email so I can send the fix scope.");
       return;
     }
     setBusy(true);
@@ -32,33 +54,64 @@ export function ScorecardView({ card }: { card: Scorecard }) {
   }
 
   const pct = Math.round(card.successRate * 100);
+  // The transcript is what sells the fix, so the failing step leads the page —
+  // the number is a footnote nobody forwards to their team.
+  const failed = card.runs.find((r) => !r.success);
+  const publishable = card.runnerMode === "agent";
 
   return (
     <div className="fs-scorecard">
       <header className="fs-score-hero">
-        <p className="fs-kicker">First-success score</p>
-        <h1>{card.productName}</h1>
+        <p className="fs-kicker">{failed ? "Where the agent stopped" : "Agent finished the job"}</p>
+        <h1>
+          {failed ? `${card.productName} fails at ${failed.failStep}` : `${card.productName} passes`}
+        </h1>
         <p className="fs-lede">{card.jtbd}</p>
         <div className="fs-score-meter" aria-label={`Score ${card.score} of 10`}>
           <span className="fs-score-num">{card.score.toFixed(1)}</span>
           <span className="fs-score-den">/ 10</span>
           <span className="fs-score-rate">{pct}% agent success</span>
         </div>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          className="fs-badge"
-          src={`/api/badge/${card.id}`}
-          alt={`first-skill-score ${card.score}`}
-          width={220}
-          height={36}
-        />
+        {publishable ? (
+          <a href={reportUrl}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              className="fs-badge"
+              src={`/api/badge/${card.id}`}
+              alt={`first-skill-score ${card.score}`}
+              width={220}
+              height={36}
+            />
+          </a>
+        ) : (
+          <p className="fs-muted">
+            Estimate only — no real agent run, so this report stays private and unbadged.
+          </p>
+        )}
       </header>
+
+      {publishable && (
+        <section className="fs-section fs-badge-embed">
+          <div className="fs-section-header">
+            <h2>Put this in your README</h2>
+          </div>
+          <p className="fs-muted">
+            The badge re-renders on every check, so it stays honest as your API changes.
+          </p>
+          <div className="fs-badge-embed-row">
+            <code className="fs-badge-embed-code">{badgeMarkdown}</code>
+            <button type="button" className="fs-copy-btn" onClick={copyBadge}>
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+        </section>
+      )}
 
       <section className="fs-section">
         <div className="fs-section-header">
           <h2>Agent runs</h2>
-          <span className={`fs-mode-pill ${card.runnerMode === "live" ? "fs-mode-pill--live" : ""}`}>
-            {card.runnerMode === "live" ? "Live docs probe" : "Heuristic estimate"}
+          <span className={`fs-mode-pill ${card.runnerMode === "heuristic" ? "" : "fs-mode-pill--live"}`}>
+            {MODE_LABELS[card.runnerMode ?? "heuristic"]}
           </span>
         </div>
         <ul className="fs-run-list">
@@ -108,28 +161,28 @@ export function ScorecardView({ card }: { card: Scorecard }) {
       </section>
 
       <section className="fs-section fs-pack-cta">
-        <h2>Get the official agent skill pack</h2>
+        <h2>Fix it, then keep it fixed</h2>
         <p>
-          $197 early bird (then $297) — SKILL.md, references, llms.txt snippet, MCP subset
-          notes, and before/after proof for this JTBD.
+          <strong>$3,000 — two weeks.</strong> I fix the step above and ship the SKILL.md,
+          references and llms.txt snippet, with a second agent run as proof.
+        </p>
+        <p>
+          <strong>$199/mo — weekly watch.</strong> A real agent re-runs this job every week
+          and posts to your Slack the day it breaks.
         </p>
         <div className="fs-pack-row">
           <input
             className="fs-input"
             type="email"
-            placeholder="founder@company.com"
+            placeholder="you@company.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
           <button className="fs-btn fs-btn--primary" onClick={requestPack} disabled={busy}>
-            {busy ? "Generating…" : "Generate skill pack"}
+            {busy ? "Sending…" : "Start the fix"}
           </button>
         </div>
         {msg && <p className="fs-error">{msg}</p>}
-        <p className="fs-muted">
-          Or browse the{" "}
-          <Link href="/leaderboard?niche=forms">form APIs leaderboard</Link>.
-        </p>
       </section>
     </div>
   );

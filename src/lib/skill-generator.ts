@@ -9,15 +9,8 @@ function skillName(product: string): string {
     .slice(0, 64);
 }
 
-export function generateSkillPack(
-  card: Scorecard,
-  opts?: { afterBoost?: number },
-): SkillPack {
+export function generateSkillPack(card: Scorecard): SkillPack {
   const name = skillName(card.productName);
-  const afterScore = Math.min(
-    10,
-    Math.round((card.score + (opts?.afterBoost ?? 3.5)) * 10) / 10,
-  );
 
   const failSteps = card.runs
     .filter((r) => !r.success)
@@ -51,8 +44,9 @@ description: Use this skill when integrating ${card.productName} via API for "${
 ${failSteps.length ? failSteps.map((s) => `- ${s}`).join("\n") : "- (baseline skill — expand after live runs)"}
 
 ## Install
+Unzip this pack into your agent's skills directory:
 \`\`\`bash
-npx skills add firstskill/${name}
+unzip ${name}-skill-pack.zip -d ~/.claude/skills/
 \`\`\`
 `;
 
@@ -170,16 +164,16 @@ Ship tool descriptions that mention WHEN to use them and required fields.
     },
     llmsTxtSnippet,
     installSnippets: {
-      skillsSh: `npx skills add firstskill/${name}`,
-      claude: `# Copy into ~/.claude/skills/${name}/SKILL.md (and references/)
-mkdir -p ~/.claude/skills/${name}/references
-# then paste SKILL.md + references from this pack`,
-      cursor: `# Project skill: .cursor/skills/${name}/SKILL.md
-# or install via skills.sh, then restart Cursor agent`,
+      skillsSh: `unzip ${name}-skill-pack.zip -d ~/.claude/skills/`,
+      claude: `unzip ${name}-skill-pack.zip -d ~/.claude/skills/
+# then start a new Claude Code session; the skill is picked up from ~/.claude/skills/${name}`,
+      cursor: `unzip ${name}-skill-pack.zip -d .cursor/skills/
+# then restart the Cursor agent`,
     },
     mcpSubsetNotes,
     beforeScore: card.score,
-    afterScore,
+    // afterScore stays unset until verifyPack re-runs the eval. A number we
+    // made up is a refund waiting to happen.
     createdAt: new Date().toISOString(),
     status: "ready",
   };
@@ -213,4 +207,89 @@ ${pack.installSnippets.cursor}
     files[`${name}/references/${k}`] = v;
   }
   return files;
+}
+
+/* ---- zip ---------------------------------------------------------------- */
+
+const crcTable = (() => {
+  const table = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    table[i] = c >>> 0;
+  }
+  return table;
+})();
+
+function crc32(bytes: Uint8Array): number {
+  let c = 0xffffffff;
+  for (const b of bytes) c = crcTable[(c ^ b) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+/**
+ * Store-only zip of the pack.
+ *
+ * ponytail: no compression — SKILL.md packs are a few KB and store-method zip
+ * needs no dependency. Add deflate via zlib if pack size ever matters.
+ * It exists so the documented install command is one people can actually run,
+ * instead of pointing at a registry entry that does not exist.
+ */
+export function zipFiles(files: Record<string, string>): Uint8Array {
+  const enc = new TextEncoder();
+  const entries = Object.entries(files);
+  const local: Uint8Array[] = [];
+  const central: Uint8Array[] = [];
+  let offset = 0;
+
+  for (const [path, content] of entries) {
+    const name = enc.encode(path);
+    const data = enc.encode(content);
+    const crc = crc32(data);
+
+    const header = new DataView(new ArrayBuffer(30));
+    header.setUint32(0, 0x04034b50, true);
+    header.setUint16(4, 20, true); // version needed
+    header.setUint16(8, 0, true); // stored
+    header.setUint32(14, crc, true);
+    header.setUint32(18, data.length, true);
+    header.setUint32(22, data.length, true);
+    header.setUint16(26, name.length, true);
+    local.push(new Uint8Array(header.buffer), name, data);
+
+    const dir = new DataView(new ArrayBuffer(46));
+    dir.setUint32(0, 0x02014b50, true);
+    dir.setUint16(4, 20, true); // version made by
+    dir.setUint16(6, 20, true); // version needed
+    dir.setUint16(10, 0, true); // stored
+    dir.setUint32(16, crc, true);
+    dir.setUint32(20, data.length, true);
+    dir.setUint32(24, data.length, true);
+    dir.setUint16(28, name.length, true);
+    dir.setUint32(42, offset, true);
+    central.push(new Uint8Array(dir.buffer), name);
+
+    offset += 30 + name.length + data.length;
+  }
+
+  const centralSize = central.reduce((n, p) => n + p.length, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);
+  end.setUint16(8, entries.length, true);
+  end.setUint16(10, entries.length, true);
+  end.setUint32(12, centralSize, true);
+  end.setUint32(16, offset, true);
+
+  const parts = [...local, ...central, new Uint8Array(end.buffer)];
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let at = 0;
+  for (const part of parts) {
+    out.set(part, at);
+    at += part.length;
+  }
+  return out;
+}
+
+export function packAsZip(pack: SkillPack): Uint8Array {
+  return zipFiles(packAsZipManifest(pack));
 }

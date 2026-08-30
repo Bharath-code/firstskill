@@ -1,5 +1,6 @@
 import { neon } from "@neondatabase/serverless";
 import type { Scorecard, SkillPack } from "./types";
+import { isPublishable } from "./publish-gate";
 
 export interface Metrics {
   /** Distinct real people who ran a score (by email, else docs domain). Seeds excluded. */
@@ -8,6 +9,8 @@ export interface Metrics {
   paidConversations: number;
   /** Packs a verified Dodo webhook marked purchased. Money actually moved. */
   packsPurchased: number;
+  /** Cards whose latest recheck dropped — the reason to come back. */
+  regressedCards: number;
   launchedAt: string;
   killAt: string;
   killCriteria: {
@@ -87,12 +90,17 @@ export async function upsertScorecard(card: Scorecard): Promise<Scorecard> {
   return card;
 }
 
+/**
+ * Single choke point for anything reader-facing. The publish gate is applied
+ * here rather than in each page, so a new surface cannot leak an estimate by
+ * forgetting to filter.
+ */
 export async function listPublicScorecards(): Promise<Scorecard[]> {
   await ensureSchema();
   const rows = await db()`
     SELECT data FROM scorecards WHERE is_public = true
     ORDER BY score DESC, product_name ASC`;
-  return rows.map((r) => r.data as Scorecard);
+  return rows.map((r) => r.data as Scorecard).filter(isPublishable);
 }
 
 export async function listPacks(): Promise<SkillPack[]> {
@@ -121,6 +129,7 @@ function freshConfig(): Metrics {
     scorecardUsers: 0,
     paidConversations: 0,
     packsPurchased: 0,
+    regressedCards: 0,
     launchedAt: new Date(now).toISOString(),
     killAt: new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString(),
     killCriteria: { minScorecardUsers: 10, minPaidConversations: 3, windowDays: 30 },
@@ -141,7 +150,7 @@ export async function getMetrics(): Promise<Metrics> {
 
   // Counters are DERIVED, never incremented: an increment can be inflated by
   // repeat clicks or your own testing, so the kill criteria could never fail.
-  const [users, intents, purchases] = await Promise.all([
+  const [users, intents, purchases, regressed] = await Promise.all([
     sql`SELECT count(DISTINCT coalesce(nullif(data->>'email', ''),
                                        split_part(data->>'docsUrl', '/', 3)))::int AS c
         FROM scorecards WHERE coalesce((data->>'seeded')::boolean, false) = false`,
@@ -151,6 +160,8 @@ export async function getMetrics(): Promise<Metrics> {
           AND coalesce((data->>'seeded')::boolean, false) = false
           AND nullif(data->>'skillPackId', '') IS NOT NULL`,
     sql`SELECT count(*)::int AS c FROM skill_packs WHERE data->>'status' = 'purchased'`,
+    sql`SELECT count(*)::int AS c FROM scorecards
+        WHERE coalesce((data->>'regressed')::boolean, false) = true`,
   ]);
 
   return {
@@ -158,6 +169,7 @@ export async function getMetrics(): Promise<Metrics> {
     scorecardUsers: users[0].c as number,
     paidConversations: intents[0].c as number,
     packsPurchased: purchases[0].c as number,
+    regressedCards: regressed[0].c as number,
   };
 }
 

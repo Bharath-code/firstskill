@@ -11,7 +11,7 @@ export type FailStep =
   | "error-recovery"
   | "none";
 
-export type RunnerMode = "heuristic" | "live";
+export type RunnerMode = "heuristic" | "live" | "agent";
 
 export interface LiveMetrics {
   httpStatus?: number;
@@ -60,6 +60,15 @@ export interface Scorecard {
   createdAt: string;
   skillPackId?: string;
   runnerMode?: RunnerMode;
+  /** Score over time. Appended by the recheck cron; oldest entries dropped. */
+  history?: { score: number; at: string }[];
+  lastCheckedAt?: string;
+  /** Set when the most recent recheck dropped by REGRESSION_DELTA or more. */
+  regressed?: boolean;
+  /** Subscribed to the weekly re-run. Only watched cards are swept. */
+  watched?: boolean;
+  /** Webhook the regression alert POSTs to. Validated as a public URL on save. */
+  notifyUrl?: string;
 }
 
 export interface SkillPack {
@@ -77,7 +86,9 @@ export interface SkillPack {
   };
   mcpSubsetNotes: string;
   beforeScore: number;
-  afterScore: number;
+  /** Set only after a second eval actually ran with this pack installed. */
+  afterScore?: number;
+  verifiedAt?: string;
   createdAt: string;
   status: "draft" | "ready" | "purchased";
 }
@@ -92,6 +103,8 @@ export interface ScoreRequest {
   email?: string;
   makePublic?: boolean;
   runnerMode?: RunnerMode;
+  watch?: boolean;
+  notifyUrl?: string;
 }
 
 export interface PackRequest {

@@ -1,0 +1,3 @@
+{
+  "crons": [{ "path": "/api/recheck", "schedule": "0 7 * * 1" }]
+}
