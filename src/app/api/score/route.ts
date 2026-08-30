@@ -9,6 +9,7 @@ import {
 import { ensureSeedScorecards } from "@/lib/seed";
 import { getJtbd } from "@/lib/jtbds";
 import { assertPublicUrl, BlockedUrlError } from "@/lib/safe-fetch";
+import { isPublishable } from "@/lib/publish-gate";
 
 export async function POST(req: Request) {
   await ensureSeedScorecards();
@@ -24,6 +25,9 @@ export async function POST(req: Request) {
   try {
     await assertPublicUrl(body.docsUrl);
     if (body.openApiUrl?.trim()) await assertPublicUrl(body.openApiUrl.trim());
+    // The webhook is a server-side POST to a user-supplied URL: same SSRF
+    // surface as the docs fetch, so it goes through the same guard.
+    if (body.notifyUrl?.trim()) await assertPublicUrl(body.notifyUrl.trim());
   } catch (e) {
     const message =
       e instanceof BlockedUrlError ? e.message : "docsUrl must be a valid URL";
@@ -31,6 +35,8 @@ export async function POST(req: Request) {
   }
 
   const analysis = await runScorecardAnalysis(body);
+  // Only a real agent run may carry a company's name in public.
+  const publishable = isPublishable({ runnerMode: analysis.runnerMode });
   const id = newId("score");
   const baseSlug = slugify(body.productName);
   const slug = `${baseSlug}-${id.slice(-6)}`;
@@ -49,10 +55,12 @@ export async function POST(req: Request) {
     successRate: analysis.successRate,
     runs: analysis.runs,
     fixes: analysis.fixes,
-    public: body.makePublic !== false,
+    public: publishable && body.makePublic !== false,
     seeded: false,
     createdAt: new Date().toISOString(),
     runnerMode: analysis.runnerMode,
+    watched: body.watch === true,
+    notifyUrl: body.notifyUrl?.trim() || undefined,
   });
 
 
@@ -60,6 +68,7 @@ export async function POST(req: Request) {
     scorecard: card,
     signals: analysis.signals,
     runnerNote: analysis.runnerNote,
+    publishable,
     jtbdLabel: getJtbd(body.jtbdId)?.label,
   });
 }

@@ -65,6 +65,10 @@ export interface Scorecard {
   lastCheckedAt?: string;
   /** Set when the most recent recheck dropped by REGRESSION_DELTA or more. */
   regressed?: boolean;
+  /** Subscribed to the weekly re-run. Only watched cards are swept. */
+  watched?: boolean;
+  /** Webhook the regression alert POSTs to. Validated as a public URL on save. */
+  notifyUrl?: string;
 }
 
 export interface SkillPack {
@@ -99,6 +103,8 @@ export interface ScoreRequest {
   email?: string;
   makePublic?: boolean;
   runnerMode?: RunnerMode;
+  watch?: boolean;
+  notifyUrl?: string;
 }
 
 export interface PackRequest {
