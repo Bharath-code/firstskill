@@ -1,5 +1,6 @@
 import { neon } from "@neondatabase/serverless";
 import type { Scorecard, SkillPack } from "./types";
+import { isPublishable } from "./publish-gate";
 
 export interface Metrics {
   /** Distinct real people who ran a score (by email, else docs domain). Seeds excluded. */
@@ -89,12 +90,17 @@ export async function upsertScorecard(card: Scorecard): Promise<Scorecard> {
   return card;
 }
 
+/**
+ * Single choke point for anything reader-facing. The publish gate is applied
+ * here rather than in each page, so a new surface cannot leak an estimate by
+ * forgetting to filter.
+ */
 export async function listPublicScorecards(): Promise<Scorecard[]> {
   await ensureSchema();
   const rows = await db()`
     SELECT data FROM scorecards WHERE is_public = true
     ORDER BY score DESC, product_name ASC`;
-  return rows.map((r) => r.data as Scorecard);
+  return rows.map((r) => r.data as Scorecard).filter(isPublishable);
 }
 
 export async function listPacks(): Promise<SkillPack[]> {

@@ -1,5 +1,6 @@
 import { getScorecard } from "@/lib/store";
 import { ensureSeedScorecards } from "@/lib/seed";
+import { isPublishable } from "@/lib/publish-gate";
 
 export async function GET(
   _req: Request,
@@ -7,9 +8,11 @@ export async function GET(
 ) {
   await ensureSeedScorecards();
   const { id } = await ctx.params;
-  const card = await getScorecard(id);
-  const score = card ? card.score.toFixed(1) : "?";
-  const label = card ? card.productName.slice(0, 18) : "unknown";
+  const found = await getScorecard(id);
+  // An estimate must never render as a number on someone else's README.
+  const card = found && isPublishable(found) ? found : null;
+  const score = card ? card.score.toFixed(1) : "n/a";
+  const label = card ? card.productName.slice(0, 18) : found ? "unrated" : "unknown";
   const color =
     !card ? "#666" : card.score >= 7 ? "#1a7f4b" : card.score >= 4 ? "#b36b00" : "#b42318";
 
