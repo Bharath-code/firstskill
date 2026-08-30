@@ -1,43 +1,81 @@
-# GTM — first 10 users (form APIs)
+# GTM — first paying customer
 
-## Seeded leaderboard (live at `/leaderboard?niche=forms`)
+Supersedes the form-API + leaderboard + $197-pack plan. That plan died when Cloudflare,
+Vercel ("Is Agentic") and Jentic shipped free agent-readiness scores and Vercel's skills.sh
+took over skill distribution: the lead magnet stopped being scarce and the deliverable
+stopped being rare. See the strategy readout for the full argument.
 
-| Rank target | Product | Angle |
-|-------------|---------|-------|
-| Top | Tally | API-first; agents succeed |
-| Mid | Jotform, Formspree, Typeform | Fixable gaps |
-| Bottom | Fillout, Paperform, Feathery, Google Forms | Outreach priority |
+Target list and run protocol: [TARGETS.md](./TARGETS.md).
 
-## Cold email (bottom half)
+## What is sold
+
+| Offer | Price | What it is |
+|-------|-------|------------|
+| Fix | **$3,000**, two weeks | Fix the failing step, ship SKILL.md + references + llms.txt snippet, prove it with a second agent run |
+| Watch | **$199/mo** | A real agent re-runs the job weekly; webhook alert the day it breaks |
+
+The $197/$297 self-serve pack is retired. It was a one-time purchase from a buyer with no
+budget line, and the artifact is now a free install from skills.sh.
+
+## Sequence
+
+1. **Run the cluster.** Five direct rivals, one JTBD, real agent runs (`runnerMode: "agent"`).
+2. **Email the bottom 3 of each cluster** with the transcript. Not the score.
+3. **Offer the fix, not the file.** $3k, two weeks, case-study rights.
+4. **Convert delivery into Watch.** The retainer is the actual business; the engagement pays
+   for the month it takes to build the pipeline.
+5. **Give the winner the badge.** Free. They post it, their rivals run the CLI, you get cited.
+
+## Cold email
 
 ```
-Subject: Agents fail your forms JTBD at {{failStep}}
+Subject: Claude Code failed your {{jtbd}} at {{failStep}}
 
 Hey {{name}} —
 
-We ran Claude Code, Cursor Agent, and Codex against your docs on:
-"Create a form with one email field and submit a sample response via API."
+I ran Claude Code against your quickstart on:
+"{{jtbd}}"
 
-Your first-success score: {{score}}/10
-Fail step: {{failStep}}
-Full report: {{link}}
+It stopped at {{failStep}}. Full transcript: {{link}}
+Two of your peers finished the same job unattended.
 
-Peers agents finish without a human sit higher on the Form APIs leaderboard.
-
-We ship an official SKILL.md + references pack for this JTBD — $197 early bird (then $297).
-Want me to generate yours?
+I fix this in two weeks — $3,000, and I re-run the agent afterwards to prove it.
+Want the diff first?
 
 — FirstSkill
 ```
 
+Send to the **DevRel / docs lead**, not the CEO.
+
 ## Channels
 
-1. Publish AX thesis post → CTA to free score
-2. Share leaderboard (IH, r/SaaS, r/AI_Agents) — tool share, not spam
-3. DM founders of bottom-half products with transcript link
-4. Product Hunt: free scorecard only
-5. First 10 packs at $197 with case-study rights
+Ranked by what actually compounds:
 
-## Do not pitch
+1. **Badge on the winner's docs** — the only loop where someone else does the distributing.
+2. **Direct transcript emails** to the bottom half of each cluster. Conversion, not
+   acquisition.
+3. **Method post** — publish the methodology and the CLI, not a ranking of named companies.
+   Open method gets cited; a shame table gets ignored or lawyered.
+4. **Where the buyers already are** — Claude / Cursor Discords, r/AI_Agents, IH. Share the
+   tool, not the table.
 
-“Become an AX engineer.” Pitch: **agents can finish one job on your API.**
+Deprioritized: Product Hunt (a free scorecard is no longer novel — five exist), and any
+public leaderboard until every entry is a real agent run.
+
+## Do not
+
+- **Do not publish heuristic scores about named companies.** The publish gate now enforces
+  this in code; do not route around it.
+- **Do not pitch "become an AX engineer."** Pitch: an agent could not finish one job on
+  your API, and here is the transcript.
+- **Do not lead with the number.** Lead with the step where it stopped.
+
+## Kill criteria (amended)
+
+The old bar — 10 scorecard users, 3 paid conversations — measured curiosity about a free
+score that five companies now give away. Replace with, inside 30 days:
+
+- **1 paid engagement ≥ $2,000**, or
+- **5 paying Watch subscriptions**
+
+Neither lands → publish the thesis, open-source the scorer, move on.
