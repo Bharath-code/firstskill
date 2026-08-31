@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { ensureSeedScorecards } from "@/lib/seed";
 import { listPublicScorecards } from "@/lib/store";
 import type { Niche } from "@/lib/types";
+import { NICHES } from "@/lib/jtbds";
 
 export const metadata = {
   title: "Leaderboard — FirstSkill",
@@ -12,12 +12,11 @@ export default async function LeaderboardPage({
 }: {
   searchParams: Promise<{ niche?: string }>;
 }) {
-  await ensureSeedScorecards();
   const sp = await searchParams;
-  const niche = (sp.niche as Niche | undefined) ?? "forms";
+  const niche = (sp.niche as Niche | undefined) ?? "retrieval";
   const all = await listPublicScorecards();
   const cards = all.filter((c) => c.niche === niche);
-  const niches: Niche[] = ["forms", "payments", "scheduling"];
+  const niches: Niche[] = NICHES.map((n) => n.id);
 
   return (
     <section>

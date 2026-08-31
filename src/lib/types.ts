@@ -1,4 +1,4 @@
-export type Niche = "forms" | "payments" | "scheduling";
+export type Niche = "retrieval" | "memory-state";
 
 export type AgentName = "claude-code" | "cursor-agent" | "codex";
 

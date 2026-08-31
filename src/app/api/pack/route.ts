@@ -2,10 +2,8 @@ import { NextResponse } from "next/server";
 import type { PackRequest } from "@/lib/types";
 import { getScorecard, upsertScorecard, upsertPack } from "@/lib/store";
 import { generateSkillPack, packAsZipManifest } from "@/lib/skill-generator";
-import { ensureSeedScorecards } from "@/lib/seed";
 
 export async function POST(req: Request) {
-  await ensureSeedScorecards();
   const body = (await req.json()) as PackRequest;
   if (!body.scorecardId || !body.email?.includes("@")) {
     return NextResponse.json(

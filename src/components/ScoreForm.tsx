@@ -3,26 +3,15 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Niche, RunnerMode } from "@/lib/types";
+// One source of truth: these are plain data, so the client can import them
+// directly instead of keeping a second copy that drifts.
+import { JTBD_TEMPLATES, NICHES } from "@/lib/jtbds";
 
-const NICHES_CLIENT: { id: Niche; label: string }[] = [
-  { id: "forms", label: "Form APIs" },
-  { id: "payments", label: "Creator payments" },
-  { id: "scheduling", label: "Scheduling" },
-];
-
-const JTBD_CLIENT: { id: string; niche: Niche; label: string }[] = [
-  { id: "forms-create-submit", niche: "forms", label: "Create form + capture one response" },
-  { id: "forms-export", niche: "forms", label: "List submissions + export CSV" },
-  { id: "payments-charge", niche: "payments", label: "Create product + take $10 charge" },
-  { id: "payments-refund", niche: "payments", label: "Refund a test payment" },
-  { id: "scheduling-book", niche: "scheduling", label: "Book next available slot" },
-  { id: "scheduling-cancel", niche: "scheduling", label: "Cancel and reschedule" },
-];
 
 export function ScoreForm() {
   const router = useRouter();
-  const [niche, setNiche] = useState<Niche>("forms");
-  const [jtbdId, setJtbdId] = useState("forms-create-submit");
+  const [niche, setNiche] = useState<Niche>("retrieval");
+  const [jtbdId, setJtbdId] = useState("retrieval-search-fetch");
   const [productName, setProductName] = useState("");
   const [docsUrl, setDocsUrl] = useState("");
   const [openApiUrl, setOpenApiUrl] = useState("");
@@ -33,7 +22,7 @@ export function ScoreForm() {
   const [error, setError] = useState<string | null>(null);
 
   const jtbds = useMemo(
-    () => JTBD_CLIENT.filter((j) => j.niche === niche),
+    () => JTBD_TEMPLATES.filter((j) => j.niche === niche),
     [niche],
   );
 
@@ -100,11 +89,11 @@ export function ScoreForm() {
             onChange={(e) => {
               const n = e.target.value as Niche;
               setNiche(n);
-              const first = JTBD_CLIENT.find((j) => j.niche === n);
+              const first = JTBD_TEMPLATES.find((j) => j.niche === n);
               if (first) setJtbdId(first.id);
             }}
           >
-            {NICHES_CLIENT.map((n) => (
+            {NICHES.map((n) => (
               <option key={n.id} value={n.id}>
                 {n.label}
               </option>

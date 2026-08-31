@@ -8,95 +8,67 @@ export interface JtbdTemplate {
   successCriteria: string[];
 }
 
+/** Named the way a customer would say it out loud, not the way we file it. */
 export const NICHES: { id: Niche; label: string; blurb: string }[] = [
   {
-    id: "forms",
-    label: "Form APIs",
-    blurb: "Create a form, collect a response, export submissions.",
+    id: "retrieval",
+    label: "Search & fetch",
+    blurb: "Find something out on the web and bring back text an assistant can use.",
   },
   {
-    id: "payments",
-    label: "Creator payments",
-    blurb: "Create a product, take a payment, confirm the charge.",
-  },
-  {
-    id: "scheduling",
-    label: "Scheduling",
-    blurb: "Create an event, book a slot, send a confirmation.",
+    id: "memory-state",
+    label: "Store & recall",
+    blurb: "Save something now, then find it again later.",
   },
 ];
 
 export const JTBD_TEMPLATES: JtbdTemplate[] = [
   {
-    id: "forms-create-submit",
-    niche: "forms",
-    label: "Create form + capture one response",
+    id: "retrieval-search-fetch",
+    niche: "retrieval",
+    label: "Search, then read the top results",
     prompt:
-      "Using only the product docs and API, create a new form with one email field and one short-text field, then submit a sample response. Report the submission id.",
+      "Using only the product docs and API, run a search for a topic of your choice, then fetch the full contents of the top three results and report the source URLs.",
     successCriteria: [
-      "Form created via API",
-      "Response submitted",
-      "Submission id returned",
+      "Search request accepted",
+      "Contents fetched for the top results",
+      "Source URLs returned",
     ],
   },
   {
-    id: "forms-export",
-    niche: "forms",
-    label: "List submissions + export CSV",
+    id: "retrieval-crawl-page",
+    niche: "retrieval",
+    label: "Read one page of a site as clean text",
     prompt:
-      "Authenticate, list submissions for an existing form, and export them as CSV (or equivalent structured export).",
+      "Using only the product docs and API, fetch a single public page and return it as clean text or markdown, with the navigation and boilerplate stripped.",
     successCriteria: [
-      "Auth succeeded",
-      "Submissions listed",
-      "Export retrieved",
+      "Crawl or scrape request accepted",
+      "Page content returned",
+      "Content is usable text, not raw HTML",
     ],
   },
   {
-    id: "payments-charge",
-    niche: "payments",
-    label: "Create product + take $10 charge",
+    id: "memory-store-recall",
+    niche: "memory-state",
+    label: "Save three items, then find one again",
     prompt:
-      "Create a $10 one-time product (or checkout session) and complete a test-mode charge. Return the payment/session id.",
+      "Using only the product docs and API, store three items with some attached detail, then run one query that finds the right item back and report its id.",
     successCriteria: [
-      "Product or price created",
-      "Checkout or charge initiated",
-      "Payment id returned",
+      "Items stored",
+      "Query executed",
+      "Correct item returned by id",
     ],
   },
   {
-    id: "payments-refund",
-    niche: "payments",
-    label: "Refund a test payment",
+    id: "memory-sandbox-run",
+    niche: "memory-state",
+    label: "Run a snippet and read the output",
     prompt:
-      "Given a recent test payment id from docs/examples, issue a full refund and confirm status.",
+      "Using only the product docs and API, start a session or sandbox, run a short snippet of code in it, read the printed output back, and shut it down cleanly.",
     successCriteria: [
-      "Payment located",
-      "Refund created",
-      "Refund status confirmed",
-    ],
-  },
-  {
-    id: "scheduling-book",
-    niche: "scheduling",
-    label: "Book next available slot",
-    prompt:
-      "Find the next available slot for a demo calendar and book it for a fictional attendee. Return the event id.",
-    successCriteria: [
-      "Availability fetched",
-      "Slot booked",
-      "Event id returned",
-    ],
-  },
-  {
-    id: "scheduling-cancel",
-    niche: "scheduling",
-    label: "Cancel and reschedule",
-    prompt:
-      "Cancel an existing booking from the docs examples and reschedule it one day later.",
-    successCriteria: [
-      "Booking found",
-      "Cancelled",
-      "Rescheduled with new id",
+      "Session started",
+      "Snippet executed",
+      "Output read back and session closed",
     ],
   },
 ];

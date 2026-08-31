@@ -6,13 +6,11 @@ import {
   slugify,
   upsertScorecard,
 } from "@/lib/store";
-import { ensureSeedScorecards } from "@/lib/seed";
 import { getJtbd } from "@/lib/jtbds";
 import { assertPublicUrl, BlockedUrlError } from "@/lib/safe-fetch";
 import { isPublishable } from "@/lib/publish-gate";
 
 export async function POST(req: Request) {
-  await ensureSeedScorecards();
   const body = (await req.json()) as ScoreRequest;
 
   if (!body.productName?.trim() || !body.docsUrl?.trim() || !body.niche || !body.jtbdId) {

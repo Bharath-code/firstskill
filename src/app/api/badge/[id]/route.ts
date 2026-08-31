@@ -1,12 +1,10 @@
 import { getScorecard } from "@/lib/store";
-import { ensureSeedScorecards } from "@/lib/seed";
 import { isPublishable } from "@/lib/publish-gate";
 
 export async function GET(
   _req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  await ensureSeedScorecards();
   const { id } = await ctx.params;
   const found = await getScorecard(id);
   // An estimate must never render as a number on someone else's README.

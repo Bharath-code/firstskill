@@ -5,7 +5,7 @@ import type { Scorecard } from "./types";
 
 const card: Scorecard = {
   id: "score_1", slug: "acme-1", productName: "Acme", docsUrl: "https://acme.dev/docs",
-  niche: "forms", jtbd: "create a form", jtbdId: "forms-create-submit",
+  niche: "retrieval", jtbd: "search and fetch", jtbdId: "retrieval-search-fetch",
   score: 5.1, successRate: 0, fixes: [], public: true, seeded: false,
   createdAt: "2026-01-01T00:00:00.000Z", runnerMode: "agent",
   runs: [

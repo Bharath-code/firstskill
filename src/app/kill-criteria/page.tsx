@@ -1,4 +1,3 @@
-import { ensureSeedScorecards } from "@/lib/seed";
 import { getMetrics } from "@/lib/store";
 import { evaluateKillCriteria } from "@/lib/kill-criteria";
 
@@ -7,7 +6,6 @@ export const metadata = {
 };
 
 export default async function KillCriteriaPage() {
-  await ensureSeedScorecards();
   const metrics = await getMetrics();
   const { daysLeft, usersOk, paidOk, status } = evaluateKillCriteria(metrics);
 
