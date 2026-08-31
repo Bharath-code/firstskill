@@ -7,8 +7,8 @@ export function SiteHeader() {
         FirstSkill
       </Link>
       <nav>
-        <Link href="/leaderboard">Leaderboard</Link>
-        <Link href="/score">Score a product</Link>
+        <Link href="/#price">Pricing</Link>
+        <Link href="/#check">Get a recording</Link>
       </nav>
     </header>
   );
@@ -18,8 +18,8 @@ export function SiteFooter() {
   return (
     <footer className="fs-footer">
       <p>
-        FirstSkill proves agents can finish one job on your API — then ships the official
-        skill pack so they keep choosing you.
+        FirstSkill records an AI assistant trying one real job on your product, fixes
+        whatever stopped it, and checks again every week.
       </p>
     </footer>
   );

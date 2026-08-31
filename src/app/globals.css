@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap");
-
 /* Minimal reset — replaces Tailwind Preflight, which was the only part of
    Tailwind this project used (zero utility classes across the codebase). */
 html {
@@ -79,9 +77,9 @@ a {
   --ok: #1faa6e;
   --muted: #6b7f86;
   --line: rgba(13, 143, 122, 0.28);
-  --font-display: "Bricolage Grotesque", Georgia, serif;
-  --font-body: "Figtree", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-display: var(--font-display-src), Georgia, serif;
+  --font-body: var(--font-body-src), system-ui, sans-serif;
+  --font-mono: var(--font-mono-src), ui-monospace, monospace;
 }
 
 * {
@@ -1064,4 +1062,288 @@ a:hover {
   font-family: var(--font-mono);
   font-size: 0.72rem;
   color: var(--paper-dim);
+}
+
+/* ---------------------------------------------------------------
+   Landing page — the recording is the argument, so it gets the
+   page's only real motion. Everything around it stays still.
+   --------------------------------------------------------------- */
+
+.fs-tape {
+  margin: 2.5rem 0 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(11, 18, 21, 0.97), rgba(11, 18, 21, 0.92));
+  box-shadow: 0 24px 60px -32px rgba(11, 18, 21, 0.75);
+  overflow: hidden;
+}
+
+.fs-tape-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.15rem;
+  border-bottom: 1px solid rgba(20, 196, 165, 0.22);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #8fb3b6;
+}
+
+.fs-tape-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fail);
+  box-shadow: 0 0 0 0 rgba(226, 74, 59, 0.55);
+  animation: fs-pulse 2.4s ease-out infinite;
+}
+
+.fs-tape-body {
+  display: grid;
+  padding: 1.1rem 1.15rem 0.9rem;
+  gap: 0.55rem;
+}
+
+.fs-tape-line {
+  display: grid;
+  grid-template-columns: 4.2rem 1fr;
+  gap: 0.9rem;
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: 0.87rem;
+  color: #b9cdd0;
+  animation: fs-tape-in 0.45s ease both;
+  animation-delay: calc(0.42s + var(--i) * 0.5s);
+}
+
+.fs-tape-t {
+  color: #5d7a7e;
+  font-variant-numeric: tabular-nums;
+}
+
+.fs-tape-line.is-ok .fs-tape-txt {
+  color: #d6e6e8;
+}
+
+.fs-tape-line.is-bad .fs-tape-txt {
+  color: var(--warn);
+}
+
+.fs-tape-line.is-dead {
+  margin-top: 0.35rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(226, 74, 59, 0.35);
+}
+
+.fs-tape-line.is-dead .fs-tape-txt {
+  color: var(--fail);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.fs-tape-foot {
+  margin: 0;
+  padding: 0.9rem 1.15rem 1.1rem;
+  border-top: 1px solid rgba(20, 196, 165, 0.16);
+  font-size: 0.95rem;
+  color: #9fb9bc;
+}
+
+@keyframes fs-tape-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fs-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(226, 74, 59, 0.5);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 9px rgba(226, 74, 59, 0);
+  }
+}
+
+/* --- three steps --- */
+
+.fs-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.fs-step {
+  border-top: 2px solid var(--ink);
+  padding-top: 1rem;
+}
+
+.fs-step-n {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  color: var(--teal);
+}
+
+.fs-step h3 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin: 0.4rem 0 0.5rem;
+}
+
+.fs-step p {
+  color: var(--ink-2);
+  font-size: 0.97rem;
+  line-height: 1.6;
+}
+
+/* --- weekly checks --- */
+
+.fs-weeks {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-end;
+  margin: 1.75rem 0 0.9rem;
+  height: 92px;
+}
+
+.fs-week {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fs-week-bar {
+  width: 100%;
+  height: 62px;
+  border-radius: 5px;
+  background: var(--ok);
+  transform-origin: bottom;
+  animation: fs-grow 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  animation-delay: calc(var(--i) * 0.09s);
+}
+
+.fs-week.is-broken .fs-week-bar {
+  height: 18px;
+  background: var(--fail);
+}
+
+.fs-week-m {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.fs-week.is-broken .fs-week-m {
+  color: var(--fail);
+}
+
+@keyframes fs-grow {
+  from {
+    transform: scaleY(0.05);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* --- pricing --- */
+
+.fs-plans {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.fs-plan {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1.6rem;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.fs-plan--lead {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+.fs-plan-price {
+  font-family: var(--font-display);
+  font-size: 2.1rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.fs-plan-price span {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0;
+}
+
+.fs-plan--lead .fs-plan-price {
+  color: var(--signal);
+}
+
+.fs-plan--lead .fs-plan-price span {
+  color: #8fb3b6;
+}
+
+.fs-plan h3 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0.7rem 0 0.5rem;
+}
+
+.fs-plan p {
+  font-size: 0.97rem;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+.fs-plan--lead p {
+  color: #c3d6d9;
+}
+
+@media (max-width: 780px) {
+  .fs-steps,
+  .fs-plans {
+    grid-template-columns: 1fr;
+  }
+
+  .fs-tape-line {
+    grid-template-columns: 3.4rem 1fr;
+    font-size: 0.8rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fs-tape-line,
+  .fs-week-bar {
+    animation: none;
+  }
+
+  .fs-tape-dot {
+    animation: none;
+  }
 }
